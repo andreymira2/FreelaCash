@@ -61,8 +61,8 @@ Sem telas complexas, sem funcionalidades inúteis, sem excesso visual.
 
 ## 🛠 Instalação & Desenvolvimento
 
-```sh
-git clone https://github.com/andreymira2/FreelaCash.git
-cd FreelaCash
-npm install
-npm run dev
+## 🔗 Acesse o FreelaCash
+
+Versão em produção (Netlify):  
+https://freelacash.netlify.app
+
