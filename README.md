@@ -1,20 +1,68 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 💸 FreelaCash — O Sistema Operacional do Freelancer
 
-# Run and deploy your AI Studio app
+FreelaCash é uma plataforma de gestão financeira e de projetos criada para freelancers criativos, prestadores de serviço e profissionais independentes.  
+O objetivo é oferecer uma visão clara da saúde financeira, simplificar cobranças e contratos e ajudar a manter o controle do dinheiro que entra e sai — sem complicação.
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/drive/14LwASBSbKZgVRx3Zgf393zU7cD3dr9k1
+## 🚀 Funcionalidades Principais
 
-## Run Locally
+### 🧾 Controle Financeiro Inteligente
+- Registro de Receitas e Despesas
+- Marcação rápida de pagamentos recebidos
+- Gestão de assinaturas e custos recorrentes
+- Cálculo automático de Lucro Líquido
+- Suporte multi-moeda (BRL, USD, EUR, GBP)
+- Meta mensal de faturamento com progresso visual
 
-**Prerequisites:**  Node.js
+### 📁 Gestão de Projetos & Contratos
+- Contratos por **Preço Fixo, Hora ou Diária**
+- Suporte a **Retainers (mensais)**
+- Linha do tempo e tarefas para projetos pontuais
+- Registro de pagamentos parciais e extras
+- Performance por cliente (líderes do faturamento)
 
+### 💰 Controle de Despesas
+- Categorias e Tags personalizáveis
+- Despesas recorrentes (mensal / anual)
+- Avisos de vencimento e atrasos
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 📊 Relatórios e Insights
+- Gráficos financeiros comparativos
+- Ranking de clientes que mais pagam
+- Histórico de meses anteriores
+- Exportação de dados para CSV
+
+### ⚙️ Configurações & Segurança
+- Perfil profissional com dados fiscais (CPF/CNPJ, Pix)
+- Backup e restauração de dados
+- Armazenamento local (sem servidor / sem nuvem)
+
+---
+
+## 📦 Stack Tecnológica
+
+| Tecnologia | Uso |
+|------------|------|
+| React 19 + TypeScript | Base da aplicação SPA |
+| Tailwind CSS | Estilização e Design System |
+| Vite | Build & Dev environment |
+| Recharts | Gráficos & análises |
+| Lucide Icons | Ícones minimalistas |
+| LocalStorage | Persistência de dados offline |
+
+---
+
+## 📍 Objetivo do Projeto
+Criar uma ferramenta leve, eficiente e focada no que importa: controle real da vida financeira do freelancer.  
+Sem telas complexas, sem funcionalidades inúteis, sem excesso visual.
+
+---
+
+## 🛠 Instalação & Desenvolvimento
+
+```sh
+git clone https://github.com/andreymira2/FreelaCash.git
+cd FreelaCash
+npm install
+npm run dev
