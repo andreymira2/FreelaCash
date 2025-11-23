@@ -32,6 +32,17 @@ body {
   text-shadow: 0 0 20px rgba(198, 255, 63, 0.3);
 }
 
+/* Remove number input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* Print styles */
 @media print {
   .no-print { display: none !important; }

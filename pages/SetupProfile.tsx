@@ -108,12 +108,12 @@ const SetupProfile: React.FC = () => {
                         <div className="flex justify-center -mt-12 mb-4">
                             <div
                                 onClick={() => fileInputRef.current?.click()}
-                                className="relative group cursor-pointer w-24 h-24 rounded-full border-4 border-[#161616] shadow-xl overflow-hidden bg-black flex items-center justify-center"
+                                className="relative group cursor-pointer w-28 h-28 rounded-full border-4 border-[#161616] shadow-xl overflow-hidden bg-black flex items-center justify-center"
                             >
                                 {avatar ? (
                                     <img src={avatar} alt="Preview" className="w-full h-full object-cover" />
                                 ) : (
-                                    <User size={32} className="text-slate-500 group-hover:text-brand transition-colors" />
+                                    <User size={36} className="text-slate-500 group-hover:text-brand transition-colors" />
                                 )}
 
                                 {/* Overlay Icon */}
@@ -182,7 +182,7 @@ const SetupProfile: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="pt-4 space-y-3">
+                        <div className="pt-6 space-y-3">
                             <Button type="submit" variant="primary" className="w-full h-14 text-base shadow-neon group font-extrabold tracking-wide">
                                 Começar meu painel
                                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />

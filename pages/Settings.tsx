@@ -63,7 +63,7 @@ const Settings: React.FC = () => {
         <Button
             variant="ghost"
             onClick={() => setActiveTab(id)}
-            className={`flex-1 py-4 flex items-center justify-center gap-2 border-b-4 transition-all rounded-none ${activeTab === id ? 'border-brand text-white font-bold bg-transparent hover:bg-transparent' : 'border-transparent text-zinc-500 hover:text-zinc-300 bg-transparent hover:bg-transparent'}`}
+            className={`flex-1 py-4 flex items-center justify-center gap-2 border-b-4 transition-all rounded-none ${activeTab === id ? 'border-brand text-white font-bold bg-transparent hover:bg-transparent' : 'border-transparent text-zinc-400 hover:text-zinc-200 bg-transparent hover:bg-transparent'}`}
         >
             <Icon size={18} /> <span className="hidden md:inline">{label}</span>
         </Button>
@@ -76,11 +76,11 @@ const Settings: React.FC = () => {
         </div>
     );
 
-    // Specialized Input for Light Card
+    // Specialized Input for Light Card - key prop prevents focus loss on re-render
     const LightInput = ({ label, ...props }: any) => (
         <div className="flex flex-col gap-1.5 mb-4">
             <label className="text-xs font-extrabold text-zinc-500 uppercase tracking-widest ml-1">{label}</label>
-            <Input className="px-4 py-3 rounded-xl border border-zinc-300 bg-white text-zinc-900 font-bold focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition-all placeholder-zinc-400" label="" {...props} />
+            <Input key={label} className="px-4 py-3 rounded-xl border border-zinc-300 bg-white text-zinc-900 font-bold focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition-all placeholder-zinc-500" label="" {...props} />
         </div>
     );
 
@@ -142,8 +142,8 @@ const Settings: React.FC = () => {
                 action={
                     activeTab !== 'HELP' ? (
                         <Button onClick={handleSave} variant={saved ? 'primary' : 'secondary'} className={`shadow-lg ${saved ? '' : 'bg-white text-black hover:bg-zinc-200'}`}>
-                            {saved ? <BadgeCheck size={18} /> : <Save size={18} />}
-                            {saved ? 'Salvo!' : 'Salvar Alterações'}
+                            {saved ? <BadgeCheck size={18} className="text-black" /> : <Save size={18} className="text-black" />}
+                            <span className="text-black">{saved ? 'Salvo!' : 'Salvar Alterações'}</span>
                         </Button>
                     ) : (
                         <Button onClick={() => window.print()} variant="outline" className="hidden md:flex">

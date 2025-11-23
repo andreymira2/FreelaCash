@@ -24,7 +24,7 @@ interface ExpenseFormState {
 }
 
 const Expenses: React.FC = () => {
-    const { expenses, addExpense, deleteExpense, settings, convertCurrency, dateRange, setDateRange, getDateRangeFilter, getFutureRecurringIncome } = useData();
+    const { expenses, addExpense, deleteExpense, toggleExpensePayment, settings, convertCurrency, dateRange, setDateRange, getDateRangeFilter, getFutureRecurringIncome } = useData();
     const navigate = useNavigate();
     const [showForm, setShowForm] = useState(false);
     const [formError, setFormError] = useState<string>('');
@@ -284,9 +284,13 @@ const Expenses: React.FC = () => {
 
                                             {/* Col 3: Actions (Grid for spacing) */}
                                             <div className="flex items-center gap-2">
-                                                <div
-                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isPaid ? 'bg-brand/10 text-brand' : 'bg-white/5 text-ink-dim'}`}
-                                                    title={isPaid ? "Pago este mês" : "Pendente"}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleExpensePayment(exp.id, getDateRangeFilter().start);
+                                                    }}
+                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isPaid ? 'bg-brand/10 text-brand hover:bg-brand/20' : 'bg-white/5 text-ink-dim hover:bg-white/10 hover:text-white'}`}
+                                                    title={isPaid ? "Marcar como pendente" : "Marcar como pago"}
                                                 >
                                                     {isTrialActive ? (
                                                         <AlertTriangle size={18} className="text-semantic-yellow" />
@@ -295,7 +299,7 @@ const Expenses: React.FC = () => {
                                                     ) : (
                                                         <div className="w-4 h-4 rounded-full border-2 border-white/20 group-hover:border-white/50"></div>
                                                     )}
-                                                </div>
+                                                </button>
 
                                                 {/* Separation Line */}
                                                 <div className="w-px h-8 bg-white/5 mx-1"></div>

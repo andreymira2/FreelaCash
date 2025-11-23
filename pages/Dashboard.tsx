@@ -200,13 +200,23 @@ const Dashboard: React.FC = () => {
     );
 
     return (
-        <div className="animate-in fade-in duration-700 pb-24 max-w-[1600px] mx-auto space-y-8">
+        <div className="animate-in fade-in duration-700 pb-24 pt-12 max-w-[1600px] mx-auto space-y-8">
 
-            {/* 1. Enhanced Header with Goal Ring */}
-            {/* 1. Enhanced Header with Goal Ring */}
+            {/* 1. Enhanced Header with Avatar and Goal Ring */}
             <PageHeader
-                title={userProfile.name.split(' ')[0]}
-                subtitle={timeGreeting}
+                title={
+                    <div className="flex items-center gap-4">
+                        <Avatar
+                            name={userProfile.name}
+                            src={userProfile.avatar}
+                            className="w-12 h-12 text-lg ring-2 ring-white/10 shadow-lg"
+                        />
+                        <div>
+                            <h1 className="text-2xl font-black text-white">{timeGreeting}, {userProfile.name.split(' ')[0]}</h1>
+                        </div>
+                    </div>
+                }
+                subtitle=""
                 action={
                     <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                         <div className="hidden md:flex gap-2 mr-4">
@@ -272,7 +282,7 @@ const Dashboard: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                     <QuickActionButton icon={Briefcase} label="Novo Projeto" onClick={() => navigate('/add')} colorClass="bg-brand/10 hover:bg-brand/20 text-brand border-brand/20" />
                     <QuickActionButton icon={Wallet} label="Lançar Despesa" onClick={() => navigate('/expenses')} />
-                    <QuickActionButton icon={Users} label="Clientes" onClick={() => navigate('/settings')} /> {/* Shortcut to CRM via settings for now or make CRM page */}
+                    <QuickActionButton icon={Users} label="Clientes" onClick={() => navigate('/projects')} />
                     <QuickActionButton icon={Activity} label="Relatórios" onClick={() => navigate('/reports')} />
                 </div>
             </div>
