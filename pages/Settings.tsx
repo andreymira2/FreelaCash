@@ -5,6 +5,26 @@ import { Card, Input, Button, Select, Avatar, CurrencyDisplay, PageHeader } from
 import { Currency, CURRENCY_SYMBOLS } from '../types';
 import { Save, User, Download, Upload, Database, Globe, BadgeCheck, CreditCard, Briefcase, HardDrive, BookOpen, Layout, PieChart, Users, DollarSign, Activity, CheckCircle2, Zap, FileText, Smartphone, LayoutDashboard, FolderKanban, Wallet, Printer, Monitor, WifiOff, MousePointer2, Camera } from 'lucide-react';
 
+// Move components OUTSIDE Settings to prevent recreation on each render (fixes focus bug)
+const LightCard = ({ children, className = '' }: any) => (
+    <div className={`bg-zinc-50 text-zinc-900 p-6 rounded-2xl shadow-lg border border-zinc-200 ${className}`}>
+        {children}
+    </div>
+);
+
+const LightInput = React.memo(({ label, value, onChange, ...props }: any) => (
+    <div className="flex flex-col gap-1.5 mb-4">
+        <label className="text-xs font-extrabold text-zinc-500 uppercase tracking-widest ml-1">{label}</label>
+        <input
+            type="text"
+            value={value}
+            onChange={onChange}
+            className="px-4 py-3 rounded-xl border border-zinc-300 bg-white text-zinc-900 font-bold focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition-all placeholder-zinc-500"
+            {...props}
+        />
+    </div>
+));
+
 const Settings: React.FC = () => {
     const { settings, userProfile, updateSettings, updateUserProfile, exportData, importData, loadDemoData, projects, clients, expenses, getFutureRecurringIncome } = useData();
     const [activeTab, setActiveTab] = useState<'PROFILE' | 'APP' | 'DATA' | 'HELP'>('PROFILE');
@@ -73,27 +93,6 @@ const Settings: React.FC = () => {
             <Icon size={18} /> <span className="hidden md:inline">{label}</span>
         </Button>
     );
-
-    // Light Card specialized for Settings page high contrast
-    const LightCard = ({ children, className = '' }: any) => (
-        <div className={`bg-zinc-50 text-zinc-900 p-6 rounded-2xl shadow-lg border border-zinc-200 ${className}`}>
-            {children}
-        </div>
-    );
-
-    // Specialized Input for Light Card - Memoized to prevent focus loss
-    const LightInput = React.memo(({ label, value, onChange, ...props }: any) => (
-        <div className="flex flex-col gap-1.5 mb-4">
-            <label className="text-xs font-extrabold text-zinc-500 uppercase tracking-widest ml-1">{label}</label>
-            <input
-                type="text"
-                value={value}
-                onChange={onChange}
-                className="px-4 py-3 rounded-xl border border-zinc-300 bg-white text-zinc-900 font-bold focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition-all placeholder-zinc-500"
-                {...props}
-            />
-        </div>
-    ));
 
     const featuresList = [
         {
