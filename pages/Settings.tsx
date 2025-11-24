@@ -76,13 +76,19 @@ const Settings: React.FC = () => {
         </div>
     );
 
-    // Specialized Input for Light Card - key prop prevents focus loss on re-render
-    const LightInput = ({ label, ...props }: any) => (
+    // Specialized Input for Light Card - Memoized to prevent focus loss
+    const LightInput = React.memo(({ label, value, onChange, ...props }: any) => (
         <div className="flex flex-col gap-1.5 mb-4">
             <label className="text-xs font-extrabold text-zinc-500 uppercase tracking-widest ml-1">{label}</label>
-            <Input key={label} className="px-4 py-3 rounded-xl border border-zinc-300 bg-white text-zinc-900 font-bold focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition-all placeholder-zinc-500" label="" {...props} />
+            <input 
+                type="text"
+                value={value}
+                onChange={onChange}
+                className="px-4 py-3 rounded-xl border border-zinc-300 bg-white text-zinc-900 font-bold focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition-all placeholder-zinc-500"
+                {...props}
+            />
         </div>
-    );
+    ));
 
     const featuresList = [
         {
