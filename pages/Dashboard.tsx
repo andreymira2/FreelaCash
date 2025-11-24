@@ -195,12 +195,12 @@ const Dashboard: React.FC = () => {
     const QuickActionButton = ({ icon: Icon, label, onClick, colorClass = "bg-white/5 hover:bg-white/10 text-white" }: any) => (
         <button onClick={onClick} className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl transition-all active:scale-95 ${colorClass} w-full border border-white/5`}>
             <Icon size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+            <span className="text-xs md:text-[10px] font-bold uppercase tracking-wider">{label}</span>
         </button>
     );
 
     return (
-        <div className="animate-in fade-in duration-700 pb-24 pt-12 max-w-[1600px] mx-auto space-y-8">
+        <div className="animate-in fade-in duration-700 pb-24 pt-8 md:pt-12 max-w-[1600px] mx-auto space-y-6 md:space-y-8 px-4 md:px-6">
 
             {/* 1. Enhanced Header with Avatar and Goal Ring */}
             <PageHeader
@@ -261,18 +261,18 @@ const Dashboard: React.FC = () => {
                     {/* Quick Stats Sidebar inside card */}
                     <div className="bg-black/40 border-t md:border-t-0 md:border-l border-white/5 p-6 md:w-64 flex flex-col justify-center gap-6 backdrop-blur-sm">
                         <div>
-                            <p className="text-[10px] font-bold text-ink-dim uppercase mb-1">Despesas</p>
+                            <p className="text-xs md:text-[10px] font-bold text-ink-dim uppercase mb-1">Despesas</p>
                             <p className="text-xl font-bold text-white"><CurrencyDisplay amount={dashboardData.current.expense} currency={settings.mainCurrency} /></p>
                             <TrendIndicator current={dashboardData.current.expense} previous={dashboardData.previous.expense} inverse />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-ink-dim uppercase mb-1">Lucro Líquido</p>
+                            <p className="text-xs md:text-[10px] font-bold text-ink-dim uppercase mb-1">Lucro Líquido</p>
                             <p className={`text-xl font-bold ${dashboardData.current.net >= 0 ? 'text-brand' : 'text-semantic-red'}`}>
                                 <CurrencyDisplay amount={dashboardData.current.net} currency={settings.mainCurrency} />
                             </p>
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-ink-dim uppercase mb-1 flex items-center gap-1"><RefreshCcw size={10} /> MRR Recorrente</p>
+                            <p className="text-xs md:text-[10px] font-bold text-ink-dim uppercase mb-1 flex items-center gap-1"><RefreshCcw size={10} /> MRR Recorrente</p>
                             <p className="text-lg font-bold text-semantic-purple"><CurrencyDisplay amount={recurringIncome} currency={settings.mainCurrency} /></p>
                         </div>
                     </div>
@@ -295,7 +295,7 @@ const Dashboard: React.FC = () => {
                         <h3 className="font-bold text-white text-lg flex items-center gap-2">
                             <Activity size={18} className="text-brand" /> Atividade Recente
                         </h3>
-                        <span className="text-[10px] font-bold bg-white/5 text-ink-gray px-2 py-1 rounded">Feed Unificado</span>
+                        <span className="text-xs md:text-[10px] font-bold bg-white/5 text-ink-gray px-2 py-1 rounded">Feed Unificado</span>
                     </div>
 
                     <div className="bg-base-card border border-white/5 rounded-3xl p-1">
@@ -309,7 +309,7 @@ const Dashboard: React.FC = () => {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex justify-between items-start">
                                                 <h4 className="text-sm font-bold text-white truncate">{item.title}</h4>
-                                                <span className="text-[10px] text-ink-dim whitespace-nowrap">{item.date.toLocaleDateString()}</span>
+                                                <span className="text-xs md:text-[10px] text-ink-dim whitespace-nowrap">{item.date.toLocaleDateString()}</span>
                                             </div>
                                             <p className="text-xs text-ink-gray truncate">{item.subtitle}</p>
                                         </div>

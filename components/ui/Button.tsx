@@ -1,9 +1,9 @@
 import React from 'react';
 
-export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'dark' }> =
+export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'dark' | 'compact' }> =
     ({ children, className = '', variant = 'primary', ...props }) => {
 
-        const base = "px-6 py-3.5 rounded-full font-bold tracking-tight transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none text-sm";
+        const base = "px-4 md:px-6 py-3 md:py-3.5 min-h-[44px] rounded-xl md:rounded-full font-bold tracking-tight transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none text-sm";
         const variants = {
             // Primary: Neon Lime - The main call to action
             primary: "bg-brand text-black hover:bg-brand-hover shadow-neon border border-transparent",
@@ -18,10 +18,13 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
             danger: "bg-semantic-red/10 text-semantic-red hover:bg-semantic-red/20 border border-transparent",
 
             // Ghost: No bg
-            ghost: "bg-transparent text-ink-gray hover:text-white hover:bg-white/5 px-4 border border-transparent",
+            ghost: "bg-transparent text-ink-gray hover:text-white hover:bg-white/5 px-3 md:px-4 border border-transparent",
 
             // Dark: Pure black
-            dark: "bg-black text-white border border-base-border hover:border-brand"
+            dark: "bg-black text-white border border-base-border hover:border-brand",
+
+            // Compact: Smaller for mobile-dense areas
+            compact: "px-3 py-2 min-h-[40px] text-xs md:text-sm rounded-lg"
         };
 
         return (

@@ -7,6 +7,23 @@ export default {
     ],
     theme: {
         extend: {
+            screens: {
+                'xs': '375px',
+                'sm': '640px',
+                'md': '768px',
+                'lg': '1024px',
+                'xl': '1280px',
+            },
+            spacing: {
+                'touch': '44px', // Minimum touch target (Apple/Google guidelines)
+                'touch-sm': '40px', // Slightly smaller touch target
+            },
+            fontSize: {
+                'mobile-xs': ['12px', { lineHeight: '16px' }],
+                'mobile-sm': ['14px', { lineHeight: '20px' }],
+                'mobile-base': ['16px', { lineHeight: '24px' }],
+                'mobile-lg': ['18px', { lineHeight: '28px' }],
+            },
             colors: {
                 brand: {
                     DEFAULT: '#C6FF3F', // Neon Lime from index.css glow

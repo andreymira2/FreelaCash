@@ -255,7 +255,7 @@ const Reports: React.FC = () => {
                                             {new Date(p.createdAt).toLocaleDateString()}
                                         </td>
                                         <td className="p-5">
-                                            <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider
+                                            <span className={`text-xs md:text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider
                                         ${p.status === ProjectStatus.PAID ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400' :
                                                     p.status === ProjectStatus.ACTIVE ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' : 'bg-slate-200 text-slate-600 dark:bg-dark-700 dark:text-slate-400'}`}>
                                                 {p.status === ProjectStatus.ONGOING ? 'RETAINER' : p.status}

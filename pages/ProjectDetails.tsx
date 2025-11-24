@@ -139,7 +139,7 @@ const ProjectDetails: React.FC = () => {
                                     {!isPaid ? (
                                         <Button variant="primary" className="h-8 text-xs px-3" onClick={() => updatePayment(project.id, { ...pay, status: PaymentStatus.PAID, date: new Date().toISOString() })}>Confirmar</Button>
                                     ) : (
-                                        <button onClick={() => { setSelectedReceiptPayment(pay); setShowReceiptModal(true); }} className="px-3 py-1.5 rounded-lg bg-black border border-white/10 text-ink-gray hover:text-white hover:border-brand text-[10px] font-bold uppercase flex items-center gap-1"><FileText size={12} /> Recibo</button>
+                                        <button onClick={() => { setSelectedReceiptPayment(pay); setShowReceiptModal(true); }} className="px-3 py-1.5 rounded-lg bg-black border border-white/10 text-ink-gray hover:text-white hover:border-brand text-xs md:text-[10px] font-bold uppercase flex items-center gap-1"><FileText size={12} /> Recibo</button>
                                     )}
                                     <div className="flex gap-1">
                                         <button onClick={() => openPaymentModal(pay)} className="p-2 text-ink-dim hover:text-white rounded-full" title="Editar"><Edit2 size={16} /></button>
@@ -159,11 +159,11 @@ const ProjectDetails: React.FC = () => {
             <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                     <Card className="p-4 flex flex-col justify-between">
-                        <p className="text-[10px] font-bold text-ink-gray uppercase tracking-wider">Status</p>
+                        <p className="text-xs md:text-[10px] font-bold text-ink-gray uppercase tracking-wider">Status</p>
                         <div className="mt-2"><Badge status={project.status} /></div>
                     </Card>
                     <Card className="p-4 flex flex-col justify-between">
-                        <p className="text-[10px] font-bold text-ink-gray uppercase tracking-wider">{isRetainer ? 'Valor Mensal' : 'Uso do Orçamento'}</p>
+                        <p className="text-xs md:text-[10px] font-bold text-ink-gray uppercase tracking-wider">{isRetainer ? 'Valor Mensal' : 'Uso do Orçamento'}</p>
                         {isRetainer ? <p className="text-xl font-bold text-white mt-1"><CurrencyDisplay amount={project.rate} currency={project.currency} /></p> :
                             <div className="mt-2"><div className="flex justify-between text-xs text-ink-gray mb-1"><span><CurrencyDisplay amount={totals.paid} currency={project.currency} showSymbol={false} /> pago</span><span>{Math.round((totals.paid / totals.net) * 100)}%</span></div><ProgressBar current={totals.paid} total={totals.net} className="h-2" /></div>
                         }
@@ -198,7 +198,7 @@ const ProjectDetails: React.FC = () => {
     );
 
     return (
-        <div className="space-y-6 pb-24 no-print max-w-7xl mx-auto p-6 md:p-8">
+        <div className="space-y-4 md:space-y-6 pb-24 no-print max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
             <div className="flex items-center justify-between"><button onClick={() => navigate('/projects')} className="flex items-center gap-2 text-ink-gray hover:text-white transition-colors"><ArrowLeft size={20} /> <span className="font-bold">Voltar</span></button></div>
             <div className="flex justify-between items-end"><div><h1 className="text-4xl font-extrabold text-white mb-2">{project.clientName}</h1><div className="flex gap-3"><Badge status={project.status} /><span className="text-xs font-bold text-ink-gray bg-white/5 px-2 py-1 rounded uppercase tracking-wider border border-white/10">{project.contractType === ProjectContractType.RETAINER ? 'Retainer' : project.type}</span></div></div><div className="hidden md:block text-right"><p className="text-xs font-bold text-ink-gray uppercase tracking-wider mb-1">Valor Total</p><p className="text-2xl font-extrabold text-white"><CurrencyDisplay amount={totals.gross} currency={project.currency} /></p></div></div>
 

@@ -43,6 +43,28 @@ input[type="number"] {
   appearance: textfield;
 }
 
+/* Mobile Touch Targets */
+@layer utilities {
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  .touch-target-sm {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  
+  /* Mobile Spacing Helpers */
+  .mobile-compact {
+    @apply p-4 gap-3;
+  }
+  
+  .mobile-form {
+    @apply px-4 py-3;
+  }
+}
+
 /* Print styles */
 @media print {
   .no-print { display: none !important; }

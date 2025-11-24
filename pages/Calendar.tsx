@@ -40,7 +40,7 @@ const EventPill: React.FC<{ event: CalendarEvent; mainCurrency: Currency }> = ({
     }
 
     return (
-        <div className={`text-[10px] p-1.5 rounded mb-1 truncate flex items-center gap-1 ${bg} ${text}`} title={event.title}>
+        <div className={`text-xs md:text-[10px] p-1.5 rounded mb-1 truncate flex items-center gap-1 ${bg} ${text}`} title={event.title}>
             <Icon size={10} className="shrink-0" />
             <span className="font-bold truncate">{event.title}</span>
             {event.amount && <span className="opacity-80 ml-auto">{mainCurrency === event.currency ? '' : event.currency} {event.amount.toFixed(0)}</span>}

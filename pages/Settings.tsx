@@ -142,7 +142,7 @@ const Settings: React.FC = () => {
     ];
 
     return (
-        <div className="max-w-7xl mx-auto p-6 md:p-8 pb-24 animate-in fade-in">
+        <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 pb-24 animate-in fade-in">
 
             {/* Header */}
             <PageHeader
@@ -226,11 +226,11 @@ const Settings: React.FC = () => {
                                     <p className="text-sm text-brand font-bold uppercase tracking-wider mb-6">{profileForm.title || 'Freelancer'}</p>
 
                                     <div className="w-full bg-zinc-800/50 rounded-xl p-3 mb-2 border border-zinc-700/50">
-                                        <p className="text-[10px] text-zinc-500 uppercase font-bold">Local</p>
+                                        <p className="text-xs md:text-[10px] text-zinc-500 uppercase font-bold">Local</p>
                                         <p className="text-sm text-zinc-300">{profileForm.location || 'Remoto'}</p>
                                     </div>
                                     <div className="w-full bg-zinc-800/50 rounded-xl p-3 border border-zinc-700/50">
-                                        <p className="text-[10px] text-zinc-500 uppercase font-bold">ID / Tax</p>
+                                        <p className="text-xs md:text-[10px] text-zinc-500 uppercase font-bold">ID / Tax</p>
                                         <p className="text-sm text-zinc-300">{profileForm.taxId || '---'}</p>
                                     </div>
                                 </div>
@@ -353,19 +353,19 @@ const Settings: React.FC = () => {
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:grid-cols-4">
                             <LightCard className="p-4 text-center">
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Projetos</p>
+                                <p className="text-xs md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Projetos</p>
                                 <p className="text-2xl font-black text-zinc-900">{projects.length}</p>
                             </LightCard>
                             <LightCard className="p-4 text-center">
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Clientes CRM</p>
+                                <p className="text-xs md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Clientes CRM</p>
                                 <p className="text-2xl font-black text-zinc-900">{clients.length}</p>
                             </LightCard>
                             <LightCard className="p-4 text-center">
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Despesas</p>
+                                <p className="text-xs md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Despesas</p>
                                 <p className="text-2xl font-black text-zinc-900">{expenses.length}</p>
                             </LightCard>
                             <LightCard className="p-4 text-center">
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Recorrência</p>
+                                <p className="text-xs md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Recorrência</p>
                                 <p className="text-2xl font-black text-brand-600 text-green-600"><CurrencyDisplay amount={getFutureRecurringIncome()} currency={settings.mainCurrency} /></p>
                             </LightCard>
                         </div>

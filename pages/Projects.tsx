@@ -13,7 +13,7 @@ const Projects: React.FC = () => {
     const filteredProjects = projects.filter(p => statusFilter === 'ALL' ? true : p.status === statusFilter);
 
     return (
-        <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8 pb-24 animate-in fade-in">
+        <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 pb-24 animate-in fade-in">
             <PageHeader
                 title="Portfólio"
                 subtitle="Gerencie seus contratos e ativos."
@@ -80,7 +80,7 @@ const Projects: React.FC = () => {
                                     <div className="flex items-center gap-6 md:w-1/3">
                                         <Badge status={p.status} />
                                         <div className="flex-1 hidden md:block">
-                                            <div className="flex justify-between text-[10px] uppercase font-bold text-ink-dim mb-1">
+                                            <div className="flex justify-between text-xs md:text-[10px] uppercase font-bold text-ink-dim mb-1">
                                                 <span>Progresso</span>
                                                 <span>{Math.round(progressPercent)}%</span>
                                             </div>
@@ -92,7 +92,7 @@ const Projects: React.FC = () => {
 
                                     {/* Right: Value */}
                                     <div className="md:w-1/3 text-right">
-                                        <p className="text-[10px] font-bold text-ink-dim uppercase mb-0.5">{isRetainer ? 'MRR' : 'Valor Total'}</p>
+                                        <p className="text-xs md:text-[10px] font-bold text-ink-dim uppercase mb-0.5">{isRetainer ? 'MRR' : 'Valor Total'}</p>
                                         <p className="text-2xl font-black text-white tracking-tight"><CurrencyDisplay amount={total.net} currency={p.currency} /></p>
                                     </div>
 

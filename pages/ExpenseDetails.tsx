@@ -167,11 +167,11 @@ const ExpenseDetails: React.FC = () => {
                         <div>
                             <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight leading-none mb-2">{expense.title}</h1>
                             <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[10px] font-bold text-ink-gray uppercase tracking-wider">
+                                <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-xs md:text-[10px] font-bold text-ink-gray uppercase tracking-wider">
                                     {expense.category}
                                 </span>
                                 {expense.isRecurring && (
-                                    <span className="px-2 py-0.5 rounded-md bg-brand/10 border border-brand/20 text-[10px] font-bold text-brand uppercase tracking-wider flex items-center gap-1">
+                                    <span className="px-2 py-0.5 rounded-md bg-brand/10 border border-brand/20 text-xs md:text-[10px] font-bold text-brand uppercase tracking-wider flex items-center gap-1">
                                         <Zap size={10} fill="currentColor" /> Recorrente
                                     </span>
                                 )}
@@ -179,7 +179,7 @@ const ExpenseDetails: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex flex-col items-end">
-                        <p className="text-[10px] font-bold text-ink-dim uppercase tracking-wider mb-1">Valor Mensal</p>
+                        <p className="text-xs md:text-[10px] font-bold text-ink-dim uppercase tracking-wider mb-1">Valor Mensal</p>
                         <div className="text-3xl font-black text-white tracking-tight"><CurrencyDisplay amount={expense.amount} currency={expense.currency} /></div>
                     </div>
                 </div>
@@ -214,7 +214,7 @@ const ExpenseDetails: React.FC = () => {
                                 <div className="flex items-center justify-between relative z-10">
                                     <div className="text-left">
                                         <div className="flex items-center gap-2 mb-1">
-                                            {nextPaymentAction.status === 'LATE' && <span className="bg-semantic-red text-white text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Atrasado</span>}
+                                            {nextPaymentAction.status === 'LATE' && <span className="bg-semantic-red text-white text-xs md:text-[10px] font-black px-1.5 py-0.5 rounded uppercase">Atrasado</span>}
                                             <span className={`text-sm font-bold uppercase tracking-wider ${nextPaymentAction.status === 'LATE' ? 'text-semantic-red' : 'text-black/60'}`}>{nextPaymentAction.status === 'UPCOMING' ? 'Em Breve' : 'Vence Hoje'}</span>
                                         </div>
                                         <h2 className={`text-2xl md:text-3xl font-black ${nextPaymentAction.status === 'LATE' ? 'text-white' : 'text-black'}`}>{nextPaymentAction.label}</h2>
@@ -254,7 +254,7 @@ const ExpenseDetails: React.FC = () => {
                                                         <div className="w-20 h-1.5 bg-white/5 rounded-full overflow-hidden">
                                                             <div className="h-full bg-brand" style={{ width: `${percent}%` }}></div>
                                                         </div>
-                                                        <span className="text-[10px] text-ink-dim">{yearGroup.paidCount}/12</span>
+                                                        <span className="text-xs md:text-[10px] text-ink-dim">{yearGroup.paidCount}/12</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -288,11 +288,11 @@ const ExpenseDetails: React.FC = () => {
                                                             </div>
 
                                                             {month.isPaid ? (
-                                                                <span className="text-[10px] font-bold text-brand uppercase tracking-wider">Pago</span>
+                                                                <span className="text-xs md:text-[10px] font-bold text-brand uppercase tracking-wider">Pago</span>
                                                             ) : month.isFuture ? (
-                                                                <span className="text-[10px] font-bold text-ink-dim uppercase tracking-wider">Futuro</span>
+                                                                <span className="text-xs md:text-[10px] font-bold text-ink-dim uppercase tracking-wider">Futuro</span>
                                                             ) : (
-                                                                <span className="text-[10px] font-bold text-ink-gray uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">Marcar</span>
+                                                                <span className="text-xs md:text-[10px] font-bold text-ink-gray uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">Marcar</span>
                                                             )}
                                                         </div>
                                                     ))}

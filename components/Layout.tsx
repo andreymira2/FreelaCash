@@ -76,27 +76,28 @@ const Layout: React.FC = () => {
       </aside>
 
       {/* Mobile Bottom Nav (Floating Dark Glass) */}
-      <nav className="fixed bottom-6 left-6 right-6 bg-[#111111]/90 backdrop-blur-xl rounded-[2rem] shadow-float flex justify-around items-center p-2 md:hidden z-50 border border-white/10 h-20">
+      <nav className="fixed bottom-6 left-6 right-6 bg-[#111111]/90 backdrop-blur-xl rounded-[2rem] shadow-float flex justify-around items-center p-2 md:hidden z-50 border border-white/10 h-16">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) => `
-              relative flex flex-col items-center justify-center w-14 h-14 rounded-full transition-all duration-300
+              relative flex flex-col items-center justify-center w-12 h-12 rounded-full transition-all duration-300
               ${isActive && !item.special ? 'text-brand' : 'text-ink-gray'}
             `}
           >
             {({ isActive }) => (
               <>
                 {item.special ? (
-                  <div className="absolute -top-10 bg-brand text-black p-4 rounded-full shadow-neon border-[6px] border-base scale-110 transition-transform active:scale-95">
-                    <item.icon size={28} strokeWidth={3} />
+                  <div className="absolute -top-8 bg-brand text-black p-3.5 rounded-full shadow-neon border-[6px] border-base scale-110 transition-transform active:scale-95">
+                    <item.icon size={26} strokeWidth={3} />
                   </div>
                 ) : (
-                  <>
-                    <item.icon size={24} strokeWidth={isActive ? 2.5 : 2} className="transition-transform active:scale-90" />
+                  <div className="flex flex-col items-center gap-0.5">
+                    <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} className="transition-transform active:scale-90" />
+                    <span className="text-[9px] font-bold">{item.label}</span>
                     {isActive && <div className="absolute -bottom-1 w-1 h-1 bg-brand rounded-full shadow-[0_0_8px_currentColor]"></div>}
-                  </>
+                  </div>
                 )}
               </>
             )}
@@ -105,7 +106,7 @@ const Layout: React.FC = () => {
       </nav>
 
       {/* Main Content Area */}
-      <main className="w-full text-white">
+      <main className="w-full text-white pb-24 md:pb-0">
         <Outlet />
       </main>
     </div>

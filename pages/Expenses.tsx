@@ -172,7 +172,7 @@ const Expenses: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6 pb-24 animate-in fade-in duration-500 max-w-7xl mx-auto p-6 md:p-8">
+        <div className="space-y-4 md:space-y-6 pb-24 animate-in fade-in duration-500 max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
             <PageHeader
                 title="Painel de Custos"
                 subtitle="Controle de fornecedores e fluxo de caixa."
@@ -203,7 +203,7 @@ const Expenses: React.FC = () => {
                     <div>
                         <p className="text-xs font-bold text-ink-gray uppercase tracking-wider mb-1">Custo Fixo Mensal</p>
                         <h2 className="text-3xl font-black text-white"><CurrencyDisplay amount={monthlyBurnRate} currency={settings.mainCurrency} /></h2>
-                        <p className="text-[10px] text-ink-gray mt-1">Assinaturas & Contratos</p>
+                        <p className="text-xs md:text-[10px] text-ink-gray mt-1">Assinaturas & Contratos</p>
                     </div>
                 </Card>
                 <Card className="flex items-center gap-6 border-l-4 border-l-brand bg-gradient-to-r from-base-card to-base-card/50">
@@ -211,7 +211,7 @@ const Expenses: React.FC = () => {
                     <div>
                         <p className="text-xs font-bold text-ink-gray uppercase tracking-wider mb-1">Variável (Este Mês)</p>
                         <h2 className="text-3xl font-black text-white"><CurrencyDisplay amount={variableTotal} currency={settings.mainCurrency} /></h2>
-                        <p className="text-[10px] text-ink-gray mt-1">Uber, iFood, Equipamentos...</p>
+                        <p className="text-xs md:text-[10px] text-ink-gray mt-1">Uber, iFood, Equipamentos...</p>
                     </div>
                 </Card>
             </div>
@@ -225,7 +225,7 @@ const Expenses: React.FC = () => {
                             style={{ width: `${cat.percent}%`, backgroundColor: ['#C6FF3F', '#3b82f6', '#a855f7', '#f97316', '#ec4899'][idx % 5] }}
                             className="h-full relative group"
                         >
-                            <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded whitespace-nowrap border border-white/10 z-10 font-bold">
+                            <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black text-white text-xs md:text-[10px] px-2 py-1 rounded whitespace-nowrap border border-white/10 z-10 font-bold">
                                 {cat.name}: {cat.percent.toFixed(0)}%
                             </div>
                         </div>
@@ -240,7 +240,7 @@ const Expenses: React.FC = () => {
                 <div className="lg:col-span-2 space-y-4">
                     <div className="flex items-center justify-between">
                         <h3 className="font-bold text-white uppercase text-xs tracking-wider flex items-center gap-2"><Store size={14} /> Gestão de Fornecedores</h3>
-                        <span className="text-[10px] bg-white/5 px-2 py-1 rounded text-ink-dim font-mono">{recurringExpenses.length}</span>
+                        <span className="text-xs md:text-[10px] bg-white/5 px-2 py-1 rounded text-ink-dim font-mono">{recurringExpenses.length}</span>
                     </div>
 
                     <div className="space-y-3">
@@ -279,7 +279,7 @@ const Expenses: React.FC = () => {
                                                 <p className={`font-black text-base ${isTrialActive ? 'text-semantic-yellow line-through opacity-60' : 'text-white'}`}>
                                                     <CurrencyDisplay amount={exp.amount} currency={exp.currency} />
                                                 </p>
-                                                <p className="text-[10px] text-ink-dim uppercase">Dia {exp.dueDay || '?'}</p>
+                                                <p className="text-xs md:text-[10px] text-ink-dim uppercase">Dia {exp.dueDay || '?'}</p>
                                             </div>
 
                                             {/* Col 3: Actions (Grid for spacing) */}
@@ -344,7 +344,7 @@ const Expenses: React.FC = () => {
                                             <div className={`w-1.5 h-8 rounded-full ${!isPaid ? 'bg-semantic-red' : 'bg-white/10 group-hover:bg-brand'}`}></div>
                                             <div className="truncate">
                                                 <p className="text-xs font-bold text-white truncate">{exp.title}</p>
-                                                <p className="text-[10px] text-ink-dim">{new Date(exp.date).toLocaleDateString()}</p>
+                                                <p className="text-xs md:text-[10px] text-ink-dim">{new Date(exp.date).toLocaleDateString()}</p>
                                             </div>
                                         </div>
 
