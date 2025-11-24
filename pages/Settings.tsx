@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useData } from '../context/DataContext';
 import { Card, Input, Button, Select, Avatar, CurrencyDisplay, PageHeader } from '../components/ui';
 import { Currency, CURRENCY_SYMBOLS } from '../types';
@@ -15,6 +15,11 @@ const Settings: React.FC = () => {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const avatarInputRef = useRef<HTMLInputElement>(null);
+
+    // Stable onChange handlers using useCallback
+    const handleProfileFieldChange = useCallback((field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        setProfileForm(prev => ({ ...prev, [field]: e.target.value }));
+    }, []);
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
@@ -80,7 +85,7 @@ const Settings: React.FC = () => {
     const LightInput = React.memo(({ label, value, onChange, ...props }: any) => (
         <div className="flex flex-col gap-1.5 mb-4">
             <label className="text-xs font-extrabold text-zinc-500 uppercase tracking-widest ml-1">{label}</label>
-            <input 
+            <input
                 type="text"
                 value={value}
                 onChange={onChange}
@@ -196,18 +201,18 @@ const Settings: React.FC = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-4">
-                                    <LightInput label="Nome Completo" value={profileForm.name} onChange={(e: any) => setProfileForm({ ...profileForm, name: e.target.value })} />
+                                    <LightInput label="Nome Completo" value={profileForm.name} onChange={handleProfileFieldChange('name')} />
                                     <div className="grid grid-cols-2 gap-4">
-                                        <LightInput label="Cargo / Título" value={profileForm.title || ''} onChange={(e: any) => setProfileForm({ ...profileForm, title: e.target.value })} />
-                                        <LightInput label="Localização" value={profileForm.location || ''} onChange={(e: any) => setProfileForm({ ...profileForm, location: e.target.value })} />
+                                        <LightInput label="Cargo / Título" value={profileForm.title || ''} onChange={handleProfileFieldChange('title')} />
+                                        <LightInput label="Localização" value={profileForm.location || ''} onChange={handleProfileFieldChange('location')} />
                                     </div>
                                 </div>
                             </LightCard>
                             <LightCard>
                                 <h3 className="text-xl font-bold text-zinc-900 mb-6 flex items-center gap-2"><CreditCard size={20} className="text-zinc-400" /> Dados de Cobrança</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <LightInput label="CPF / CNPJ" placeholder="000.000.000-00" value={profileForm.taxId || ''} onChange={(e: any) => setProfileForm({ ...profileForm, taxId: e.target.value })} />
-                                    <LightInput label="Chave PIX / Conta" placeholder="Chave" value={profileForm.pixKey || ''} onChange={(e: any) => setProfileForm({ ...profileForm, pixKey: e.target.value })} />
+                                    <LightInput label="CPF / CNPJ" placeholder="000.000.000-00" value={profileForm.taxId || ''} onChange={handleProfileFieldChange('taxId')} />
+                                    <LightInput label="Chave PIX / Conta" placeholder="Chave" value={profileForm.pixKey || ''} onChange={handleProfileFieldChange('pixKey')} />
                                 </div>
                             </LightCard>
                         </div>
