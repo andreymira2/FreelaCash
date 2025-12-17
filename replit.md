@@ -1,0 +1,107 @@
+# FreelaCash
+
+## Overview
+
+FreelaCash is a financial management platform designed for freelancers, creative professionals, and independent service providers. It provides comprehensive tools for tracking income, managing projects, monitoring expenses, and generating financial reports. The application operates entirely client-side with local storage, requiring no backend server or cloud infrastructure.
+
+**Core Purpose:** Help freelancers maintain clear visibility into their financial health, simplify invoicing workflows, and track money flow without complexity.
+
+**Primary Features:**
+- Project management with support for fixed-price, hourly, and daily rate contracts
+- Expense tracking with recurring payment support
+- Financial dashboard with real-time metrics
+- Multi-currency support (BRL, USD, EUR, GBP)
+- Calendar view for payment schedules
+- Client management
+- Data export/import capabilities
+
+## User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+## System Architecture
+
+### Frontend Architecture
+
+**Framework:** React 19 with TypeScript as a Single Page Application (SPA)
+
+**Routing:** React Router v7 with HashRouter for client-side navigation. Routes are protected by an `OnboardingGuard` component that redirects new users to profile setup.
+
+**State Management:** React Context API via `DataContext` providing centralized data management for projects, clients, expenses, settings, and user profile. No external state management library (Redux, Zustand) is used.
+
+**Styling:** Tailwind CSS with custom configuration including:
+- Custom color palette (brand neon lime, semantic colors)
+- Mobile-first responsive breakpoints
+- Touch-friendly spacing utilities
+- Dark theme with OLED-optimized backgrounds
+
+**Build System:** Vite with React plugin for fast development and optimized production builds.
+
+### Data Storage
+
+**Approach:** Browser localStorage for all persistent data. No database or backend server.
+
+**Rationale:** 
+- Zero infrastructure requirements
+- Privacy-focused (data never leaves user's device)
+- Offline-capable
+- Simple deployment as static files
+
+**Trade-offs:**
+- Storage limited to ~5-10MB per origin
+- No cross-device sync without manual export/import
+- Data loss if browser storage is cleared
+
+### Component Architecture
+
+**Layout Pattern:** Hierarchical layout with:
+- `Layout.tsx` - Main shell with responsive sidebar (desktop) and bottom navigation (mobile)
+- Page components under `/pages/` directory
+- Reusable UI primitives under `/components/ui/`
+
+**UI Component Library:** Custom component library with consistent styling:
+- Button, Card, Input, Select, Toggle (form controls)
+- Avatar, Badge, CurrencyDisplay (display components)
+- PageHeader, EmptyState, ProgressBar (layout helpers)
+
+### Type System
+
+**TypeScript Enums for Domain Models:**
+- `Currency` - Supported currencies
+- `ProjectType` - Fixed, Hourly, Daily pricing models
+- `ProjectStatus` - Active, Completed, Paid, Ongoing
+- `ProjectContractType` - One-off, Retainer, Recurring Fixed
+- `PaymentStatus` - Paid, Scheduled, Overdue
+
+### PWA Support
+
+The application includes a `manifest.json` for Progressive Web App capabilities, enabling installation on mobile devices and standalone app mode.
+
+## External Dependencies
+
+### Runtime Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `react` / `react-dom` | Core UI framework |
+| `react-router-dom` | Client-side routing |
+| `recharts` | Data visualization (charts) |
+| `lucide-react` | Icon library |
+
+### Development Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `vite` | Build tool and dev server |
+| `@vitejs/plugin-react` | React integration for Vite |
+| `tailwindcss` | Utility-first CSS framework |
+| `postcss` / `autoprefixer` | CSS processing |
+| `typescript` | Type checking |
+
+### External Services
+
+**None currently integrated.** The application is fully self-contained. The Vite config references a `GEMINI_API_KEY` environment variable, suggesting potential future AI integration, but this is not currently implemented in the codebase.
+
+### Fonts
+
+Google Fonts: Plus Jakarta Sans (loaded via CDN in `index.html`)
