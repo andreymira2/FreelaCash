@@ -32,7 +32,7 @@ export const Badge: React.FC<{ status: ProjectStatus; className?: string }> = ({
     }
 
     return (
-        <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-2 border ${styles} ${className}`}>
+        <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${styles} ${className}`}>
             <div className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-[0_0_8px_currentColor]`}></div>
             {label}
         </span>

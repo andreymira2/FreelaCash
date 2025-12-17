@@ -3,7 +3,7 @@ import React from 'react';
 export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'dark' | 'compact' }> =
     ({ children, className = '', variant = 'primary', ...props }) => {
 
-        const base = "px-4 md:px-6 py-3 md:py-3.5 min-h-[44px] rounded-xl md:rounded-full font-bold tracking-tight transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none text-sm";
+        const base = "px-4 md:px-6 py-3 md:py-3.5 min-h-[44px] rounded-xl font-bold tracking-tight transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none text-sm";
         const variants = {
             // Primary: Neon Lime - The main call to action
             primary: "bg-brand text-black hover:bg-brand-hover shadow-neon border border-transparent",

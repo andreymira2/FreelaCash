@@ -20,7 +20,7 @@ const Layout: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen pb-28 md:pb-0 md:pl-28 lg:pl-64 bg-base transition-colors duration-300">
+    <div className="min-h-screen pb-20 md:pb-0 md:pl-28 lg:pl-64 bg-base transition-colors duration-300">
       {/* Desktop Sidebar (Dark Blended) */}
       <aside className="fixed left-0 top-0 h-full w-28 lg:w-64 bg-base border-r border-white/5 hidden md:flex flex-col p-4 lg:p-6 z-30">
 
@@ -51,7 +51,7 @@ const Layout: React.FC = () => {
                   <div className="relative">
                     <item.icon size={22} strokeWidth={2.5} />
                   </div>
-                  <span className={`text-[10px] lg:text-sm font-bold ${!item.special ? 'lg:block hidden md:block' : 'lg:block hidden'}`}>{item.label}</span>
+                  <span className={`text-xs lg:text-sm font-semibold ${!item.special ? 'lg:block hidden md:block' : 'lg:block hidden'}`}>{item.label}</span>
 
                   {/* Active Indicator Dot */}
                   {item.path !== '/add' && isActive && (
@@ -69,34 +69,34 @@ const Layout: React.FC = () => {
             <Avatar name={userProfile.name} src={userProfile.avatar} className="w-10 h-10 rounded-full border border-white/10" />
             <div className="hidden lg:block overflow-hidden">
               <p className="text-sm font-bold text-white truncate group-hover:text-brand transition-colors">{userProfile.name}</p>
-              <p className="text-[10px] text-ink-gray truncate uppercase tracking-wider">{userProfile.title || 'Freelancer'}</p>
+              <p className="text-xs text-ink-dim truncate">{userProfile.title || 'Freelancer'}</p>
             </div>
           </NavLink>
         </div>
       </aside>
 
       {/* Mobile Bottom Nav (Floating Dark Glass) */}
-      <nav className="fixed bottom-6 left-6 right-6 bg-[#111111]/90 backdrop-blur-xl rounded-[2rem] shadow-float flex justify-around items-center p-2 md:hidden z-50 border border-white/10 h-16">
+      <nav className="fixed bottom-0 left-0 right-0 bg-[#111111]/95 backdrop-blur-xl shadow-float flex justify-around items-center p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden z-50 border-t border-white/10">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) => `
-              relative flex flex-col items-center justify-center w-12 h-12 rounded-full transition-all duration-300
+              relative flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all duration-300
               ${isActive && !item.special ? 'text-brand' : 'text-ink-gray'}
             `}
           >
             {({ isActive }) => (
               <>
                 {item.special ? (
-                  <div className="absolute -top-8 bg-brand text-black p-3.5 rounded-full shadow-neon border-[6px] border-base scale-110 transition-transform active:scale-95">
-                    <item.icon size={26} strokeWidth={3} />
+                  <div className="bg-brand text-black p-2.5 rounded-xl shadow-neon transition-transform active:scale-95">
+                    <item.icon size={22} strokeWidth={2.5} />
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-0.5">
-                    <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} className="transition-transform active:scale-90" />
-                    <span className="text-[9px] font-bold">{item.label}</span>
-                    {isActive && <div className="absolute -bottom-1 w-1 h-1 bg-brand rounded-full shadow-[0_0_8px_currentColor]"></div>}
+                    <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="transition-transform active:scale-90" />
+                    <span className="text-xs font-semibold">{item.label}</span>
+                    {isActive && <div className="absolute -bottom-0.5 w-1 h-1 bg-brand rounded-full shadow-[0_0_8px_currentColor]"></div>}
                   </div>
                 )}
               </>

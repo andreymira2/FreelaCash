@@ -31,9 +31,9 @@ const Projects: React.FC = () => {
                         key={status}
                         variant="ghost"
                         onClick={() => setStatusFilter(status)}
-                        className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border h-auto
+                        className={`px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all border min-h-[40px]
                 ${statusFilter === status
-                                ? 'bg-white text-black border-white shadow-glow'
+                                ? 'bg-white text-black border-white'
                                 : 'bg-base-card border-base-border text-ink-gray hover:text-white hover:border-white/30'}
                 `}
                     >
@@ -72,7 +72,7 @@ const Projects: React.FC = () => {
                                                 {p.clientName}
                                                 {isRetainer && <Repeat size={14} className="text-brand" />}
                                             </h3>
-                                            <p className="text-xs text-ink-gray font-bold uppercase tracking-wider">{p.category}</p>
+                                            <p className="text-xs text-ink-dim font-medium">{p.category}</p>
                                         </div>
                                     </div>
 
@@ -80,7 +80,7 @@ const Projects: React.FC = () => {
                                     <div className="flex items-center gap-6 md:w-1/3">
                                         <Badge status={p.status} />
                                         <div className="flex-1 hidden md:block">
-                                            <div className="flex justify-between text-xs md:text-[10px] uppercase font-bold text-ink-dim mb-1">
+                                            <div className="flex justify-between text-xs font-medium text-ink-dim mb-1">
                                                 <span>Progresso</span>
                                                 <span>{Math.round(progressPercent)}%</span>
                                             </div>
@@ -92,8 +92,8 @@ const Projects: React.FC = () => {
 
                                     {/* Right: Value */}
                                     <div className="md:w-1/3 text-right">
-                                        <p className="text-xs md:text-[10px] font-bold text-ink-dim uppercase mb-0.5">{isRetainer ? 'MRR' : 'Valor Total'}</p>
-                                        <p className="text-2xl font-black text-white tracking-tight"><CurrencyDisplay amount={total.net} currency={p.currency} /></p>
+                                        <p className="text-xs font-medium text-ink-dim mb-0.5">{isRetainer ? 'MRR' : 'Valor Total'}</p>
+                                        <p className="text-2xl font-bold text-white tracking-tight"><CurrencyDisplay amount={total.net} currency={p.currency} /></p>
                                     </div>
 
                                     {/* Hover Glow */}

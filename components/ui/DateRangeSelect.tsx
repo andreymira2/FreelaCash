@@ -4,10 +4,10 @@ import { Calendar, ChevronRight } from 'lucide-react';
 
 export const DateRangeSelect: React.FC<{ value: DateRange; onChange: (val: DateRange) => void }> = ({ value, onChange }) => (
     <div className="relative group">
-        <div className="flex items-center gap-2 bg-base-card px-4 py-2 rounded-full border border-base-border text-ink-gray cursor-pointer hover:border-brand hover:text-white transition-all shadow-sm">
+        <div className="flex items-center gap-2 bg-base-card px-4 py-2.5 rounded-xl border border-base-border text-ink-gray cursor-pointer hover:border-brand hover:text-white transition-all shadow-sm min-h-[40px]">
             <Calendar size={14} className="text-brand" />
             <select
-                className="bg-transparent outline-none font-bold text-xs appearance-none cursor-pointer pr-4 text-current uppercase tracking-wider w-full"
+                className="bg-transparent outline-none font-semibold text-sm appearance-none cursor-pointer pr-4 text-current w-full"
                 value={value}
                 onChange={(e) => onChange(e.target.value as DateRange)}
             >

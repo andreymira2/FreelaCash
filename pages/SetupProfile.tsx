@@ -130,7 +130,7 @@ const SetupProfile: React.FC = () => {
                             </div>
                         </div>
                         <div className="text-center -mt-4 mb-6">
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sua Foto (Opcional)</p>
+                            <p className="text-xs font-medium text-ink-dim">Sua foto (opcional)</p>
                         </div>
 
                         <div className="space-y-5">
@@ -192,7 +192,7 @@ const SetupProfile: React.FC = () => {
                                 type="button"
                                 variant="ghost"
                                 onClick={handleSkip}
-                                className="w-full py-3 text-xs font-extrabold text-slate-500 hover:text-white transition-colors uppercase tracking-widest"
+                                className="w-full py-3 text-sm font-medium text-ink-dim hover:text-white transition-colors"
                             >
                                 Pular por enquanto
                             </Button>

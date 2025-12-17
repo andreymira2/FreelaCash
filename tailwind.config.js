@@ -46,7 +46,7 @@ export default {
                 },
                 ink: {
                     gray: '#9CA3AF',   // Light Gray
-                    dim: '#6B7280',    // Dim Gray
+                    dim: '#A0AEC0',    // Dim Gray - Lightened for better contrast
                 },
             },
             fontFamily: {
