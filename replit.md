@@ -8,12 +8,30 @@ FreelaCash is a financial management platform designed for freelancers, creative
 
 **Primary Features:**
 - Project management with support for fixed-price, hourly, and daily rate contracts
-- Expense tracking with recurring payment support
-- Financial dashboard with real-time metrics
+- Expense tracking with recurring payment support and bulk "Mark all as paid" action
+- Financial dashboard with real-time metrics, health score, expense reminders, and receivables summary
 - Multi-currency support (BRL, USD, EUR, GBP)
 - Calendar view for payment schedules
 - Client management
+- Project duplication for recurring client work
 - Data export/import capabilities
+
+## Recent Changes (December 2024)
+
+### Phase 1-2: Visual Polish & UX Labels
+- Settings and Reports pages aligned to dark theme with design system colors (base-card, ink-gray, etc.)
+- Standardized icon sizes across app (16/20/24px)
+- Project status labels renamed to plain Portuguese (Em Andamento, Entregue, Finalizado, Recorrente)
+- Improved empty states with contextual guidance and helpful tips
+
+### Phase 3: Small Features
+- **Duplicate Project**: Clone existing projects for recurring client work (clears payments/logs, resets status)
+- **Mark All as Paid**: Bulk action for recurring expenses to mark all as paid for current month
+
+### Phase 4: Dashboard Improvements
+- **Saúde Financeira (Health Score)**: 0-100% indicator based on goal progress, profit margin, and overdue penalties
+- **A Receber (Receivables)**: Shows pending scheduled payments with overdue highlighting
+- **Vencimentos (Expense Reminders)**: Upcoming recurring expenses due in next 7 days
 
 ## User Preferences
 
