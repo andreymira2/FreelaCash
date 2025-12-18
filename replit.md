@@ -37,6 +37,14 @@ FreelaCash is a financial management platform designed for freelancers, creative
 - **Calendar List View**: Toggle between grid and agenda/list view for better mobile experience
 - **Tax Reserve Indicator**: Configure percentage in Settings (ex: MEI 5%, Simples 6-15%); Dashboard shows calculated reserve amount
 
+### Phase 6: Dashboard UX Audit (December 2024)
+- **Fixed quick action labels**: Increased from 10px to 12px for better readability
+- **Fixed MRR label**: Changed "MRR Recorrente" to "Receita Recorrente" (clearer Portuguese)
+- **Inline mark-paid for receivables**: Checkmark button in "A Receber" card to mark payments as received without navigation
+- **Inline mark-paid for expenses**: Button in "Vencimentos" card to mark recurring expenses as paid
+- **Auto-select single project**: Quick Pay modal auto-selects project if only one is active
+- **Simplified header**: Cleaner layout with date range and add project button only
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
