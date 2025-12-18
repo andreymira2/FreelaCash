@@ -1,0 +1,52 @@
+Analyze the app from a logic and data-flow perspective.
+
+Task:
+Perform a deep analysis of how financial logic is currently handled across the app
+(expenses, projects, payments, recurring items, projections).
+
+I believe the logic is fragmented across multiple functions and components.
+My goal is to evolve the app into a more cohesive system with a central financial brain.
+
+What I want to achieve:
+- A unified mental model for how money flows through the app
+- A single source of truth for:
+  • past data (history)
+  • present state (current month / open obligations)
+  • future projections (recurring expenses, retainers, expected income)
+- Consistent rules for how expenses, projects and projections interact
+
+You are allowed to:
+- Question current logic decisions
+- Identify duplicated or conflicting calculations
+- Propose a central “financial engine” or core logic layer
+- Suggest refactors that consolidate logic into a single system
+
+What to analyze:
+1) How expenses, projects, payments and recurring items are currently calculated
+2) Where logic is duplicated or disconnected
+3) How time (months, recurrence, projections) is handled
+4) How totals, balances and forecasts are derived
+5) Where edge cases may break consistency
+
+What to propose:
+- A conceptual model for a unified financial brain
+- Clear responsibilities for this central logic
+- How UI layers should consume this logic (read-only vs actions)
+- How past, present and future data should be reconciled
+- How this can scale as more rules are added
+
+Constraints:
+- No backend
+- No cloud
+- No AI features
+- Use existing data where possible
+- This can be a structural refactor, but must be realistic
+
+Output:
+- A clear diagnosis of current logical fragmentation
+- A proposed unified architecture (conceptual, not just code)
+- Suggested next steps to evolve the app toward this model
+- Optional: examples of how one feature (e.g. expenses or projections) would benefit
+
+This is a research and design task.
+Depth is more important than speed.
