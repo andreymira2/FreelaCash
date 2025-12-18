@@ -44,6 +44,9 @@ FreelaCash is a financial management platform designed for freelancers, creative
 - **Inline mark-paid for expenses**: Button in "Vencimentos" card to mark recurring expenses as paid
 - **Auto-select single project**: Quick Pay modal auto-selects project if only one is active
 - **Simplified header**: Cleaner layout with date range and add project button only
+- **Activity feed time grouping**: Grouped into "Hoje", "Últimos 7 Dias", and "Anteriores" for better scannability
+- **Mobile quick actions bar**: Compact action row (Receber/Pagar/+) visible only on mobile
+- **Improved empty states**: Better visual hierarchy with icons, headings, and actionable CTAs
 
 ## User Preferences
 
