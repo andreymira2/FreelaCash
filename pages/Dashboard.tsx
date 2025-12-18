@@ -4,7 +4,7 @@ import { useData } from '../context/DataContext';
 import { Card, CurrencyDisplay, Button, Avatar, DateRangeSelect, EmptyState, TrendIndicator, Input, Select, Badge, PageHeader } from '../components/ui';
 import { ProjectStatus, PaymentStatus, Currency } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Wallet, X, ArrowUpRight, ArrowDownLeft, Bell, Activity, RefreshCcw, Briefcase, Users, ArrowRight, Target, Zap, Clock, CheckCircle2 } from 'lucide-react';
+import { Plus, Wallet, X, ArrowUpRight, ArrowDownLeft, Bell, Activity, RefreshCcw, Briefcase, Users, ArrowRight, Target, Zap, Clock, CheckCircle2, AlertTriangle, TrendingUp, Heart, Calendar } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
     const { projects, expenses, getProjectTotal, settings, convertCurrency, userProfile, dateRange, setDateRange, getDateRangeFilter, addPayment, getFutureRecurringIncome } = useData();
@@ -168,8 +168,65 @@ const Dashboard: React.FC = () => {
         // Sort feed by date desc and take top 10
         const recentFeed = feedItems.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
 
-        return { current, previous, activeAssets, recentFeed };
-    }, [projects, expenses, dateRange, settings.mainCurrency, getProjectTotal, convertCurrency, getDateRangeFilter]);
+        // Upcoming Expense Reminders (next 7 days)
+        const today = new Date();
+        const weekFromNow = new Date();
+        weekFromNow.setDate(today.getDate() + 7);
+        const currentMonth = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+        
+        const upcomingExpenses: Array<{ id: string; title: string; amount: number; currency: Currency; dueDay: number; isPaid: boolean }> = [];
+        expenses.filter(e => e.isRecurring && e.dueDay).forEach(e => {
+            const dueDate = new Date(today.getFullYear(), today.getMonth(), e.dueDay || 15);
+            if (dueDate >= today && dueDate <= weekFromNow) {
+                const isPaid = e.paymentHistory?.some(h => h.monthStr === currentMonth && h.status === 'PAID') || false;
+                upcomingExpenses.push({
+                    id: e.id,
+                    title: e.title,
+                    amount: e.amount,
+                    currency: e.currency,
+                    dueDay: e.dueDay || 15,
+                    isPaid
+                });
+            }
+        });
+        upcomingExpenses.sort((a, b) => a.dueDay - b.dueDay);
+
+        // Pending Receivables (scheduled payments not yet paid)
+        const pendingReceivables: Array<{ projectId: string; clientName: string; amount: number; currency: Currency; date: Date; isOverdue: boolean }> = [];
+        projects.forEach(p => {
+            p.payments?.forEach(pay => {
+                if (pay.status === PaymentStatus.SCHEDULED) {
+                    const payDate = new Date(pay.date);
+                    pendingReceivables.push({
+                        projectId: p.id,
+                        clientName: p.clientName,
+                        amount: pay.amount,
+                        currency: p.currency,
+                        date: payDate,
+                        isOverdue: payDate < today
+                    });
+                }
+            });
+        });
+        pendingReceivables.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+        // Financial Health Score (0-100)
+        const healthMetrics = {
+            incomeVsGoal: Math.min(100, (current.income / (settings.monthlyGoal || 1)) * 100),
+            profitMargin: current.income > 0 ? Math.max(0, Math.min(100, (current.net / current.income) * 100)) : 50,
+            overdueCount: pendingReceivables.filter(r => r.isOverdue).length
+        };
+        // Weighted score: 50% goal progress, 35% profit margin, 15% penalty for overdue (max -15 points)
+        const overduePenalty = Math.min(15, healthMetrics.overdueCount * 5);
+        const healthScore = Math.round(
+            (healthMetrics.incomeVsGoal * 0.5) + 
+            (healthMetrics.profitMargin * 0.35) - 
+            overduePenalty
+        );
+        const clampedHealth = Math.max(0, Math.min(100, healthScore));
+
+        return { current, previous, activeAssets, recentFeed, upcomingExpenses, pendingReceivables, healthScore: clampedHealth };
+    }, [projects, expenses, dateRange, settings.mainCurrency, settings.monthlyGoal, getProjectTotal, convertCurrency, getDateRangeFilter]);
 
     const handleQuickPaySubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -285,6 +342,102 @@ const Dashboard: React.FC = () => {
                     <QuickActionButton icon={Users} label="Clientes" onClick={() => navigate('/projects')} />
                     <QuickActionButton icon={Activity} label="Relatórios" onClick={() => navigate('/reports')} />
                 </div>
+            </div>
+
+            {/* Financial Health + Reminders Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Financial Health Card */}
+                <Card className="border-white/10 bg-gradient-to-br from-base-card to-black">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-white flex items-center gap-2">
+                            <Heart size={18} className={dashboardData.healthScore >= 70 ? 'text-brand' : dashboardData.healthScore >= 40 ? 'text-semantic-yellow' : 'text-semantic-red'} />
+                            Saúde Financeira
+                        </h3>
+                        <span className={`text-2xl font-black ${dashboardData.healthScore >= 70 ? 'text-brand' : dashboardData.healthScore >= 40 ? 'text-semantic-yellow' : 'text-semantic-red'}`}>
+                            {dashboardData.healthScore}%
+                        </span>
+                    </div>
+                    <div className="h-3 bg-white/10 rounded-full overflow-hidden mb-4">
+                        <div 
+                            className={`h-full transition-all duration-1000 ${dashboardData.healthScore >= 70 ? 'bg-brand' : dashboardData.healthScore >= 40 ? 'bg-semantic-yellow' : 'bg-semantic-red'}`}
+                            style={{ width: `${dashboardData.healthScore}%` }}
+                        />
+                    </div>
+                    <p className="text-xs text-ink-gray">
+                        {dashboardData.healthScore >= 70 
+                            ? 'Excelente! Suas finanças estão em ótimo estado.'
+                            : dashboardData.healthScore >= 40 
+                            ? 'Atenção: Há margem para melhorar seus resultados.'
+                            : 'Alerta: Revise suas despesas e pagamentos pendentes.'}
+                    </p>
+                </Card>
+
+                {/* A Receber (Receivables) */}
+                <Card className="border-white/10">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-white flex items-center gap-2">
+                            <TrendingUp size={18} className="text-semantic-green" />
+                            A Receber
+                        </h3>
+                        <span className="text-xs bg-white/5 px-2 py-1 rounded text-ink-dim">{dashboardData.pendingReceivables.length}</span>
+                    </div>
+                    {dashboardData.pendingReceivables.length > 0 ? (
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {dashboardData.pendingReceivables.slice(0, 4).map((item, idx) => (
+                                <div 
+                                    key={idx} 
+                                    onClick={() => navigate(`/project/${item.projectId}`)}
+                                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${item.isOverdue ? 'bg-semantic-red/10 hover:bg-semantic-red/20' : 'bg-white/5 hover:bg-white/10'}`}
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-white truncate">{item.clientName}</p>
+                                        <p className={`text-xs ${item.isOverdue ? 'text-semantic-red font-bold' : 'text-ink-gray'}`}>
+                                            {item.isOverdue ? 'ATRASADO' : item.date.toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <span className="font-bold text-sm text-white"><CurrencyDisplay amount={item.amount} currency={item.currency} /></span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-ink-gray text-center py-4">Nenhum pagamento agendado.</p>
+                    )}
+                </Card>
+
+                {/* Expense Reminders */}
+                <Card className="border-white/10">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-white flex items-center gap-2">
+                            <Calendar size={18} className="text-semantic-yellow" />
+                            Vencimentos
+                        </h3>
+                        <span className="text-xs bg-white/5 px-2 py-1 rounded text-ink-dim">Próx. 7 dias</span>
+                    </div>
+                    {dashboardData.upcomingExpenses.length > 0 ? (
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {dashboardData.upcomingExpenses.map((exp) => (
+                                <div 
+                                    key={exp.id}
+                                    onClick={() => navigate(`/expenses/${exp.id}`)}
+                                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${exp.isPaid ? 'bg-brand/10 hover:bg-brand/20' : 'bg-white/5 hover:bg-white/10'}`}
+                                >
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                        {exp.isPaid ? <CheckCircle2 size={14} className="text-brand shrink-0" /> : <Clock size={14} className="text-semantic-yellow shrink-0" />}
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-white truncate">{exp.title}</p>
+                                            <p className="text-xs text-ink-gray">Dia {exp.dueDay}</p>
+                                        </div>
+                                    </div>
+                                    <span className={`font-bold text-sm ${exp.isPaid ? 'text-ink-dim line-through' : 'text-white'}`}>
+                                        <CurrencyDisplay amount={exp.amount} currency={exp.currency} />
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-ink-gray text-center py-4">Nenhuma conta nos próximos dias.</p>
+                    )}
+                </Card>
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">

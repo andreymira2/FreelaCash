@@ -194,25 +194,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const duplicateProject = useCallback((id: string): string | null => {
-    const original = data.projects.find(p => p.id === id);
-    if (!original) return null;
     const newId = Date.now().toString();
-    const duplicated: Project = {
-      ...original,
-      id: newId,
-      createdAt: Date.now(),
-      startDate: new Date().toISOString(),
-      dueDate: undefined,
-      payments: [],
-      logs: [],
-      adjustments: [],
-      events: [],
-      checklist: original.checklist?.map(t => ({ ...t, id: Date.now().toString() + Math.random(), completed: false })),
-      status: ProjectStatus.ACTIVE,
-    };
-    setData(prev => ({ ...prev, projects: [duplicated, ...prev.projects] }));
-    return newId;
-  }, [data.projects]);
+    let foundOriginal = false;
+    
+    setData(prev => {
+      const original = prev.projects.find(p => p.id === id);
+      if (!original) return prev;
+      foundOriginal = true;
+      
+      const duplicated: Project = {
+        ...original,
+        id: newId,
+        createdAt: Date.now(),
+        startDate: new Date().toISOString(),
+        dueDate: undefined,
+        payments: [],
+        logs: [],
+        adjustments: [],
+        events: [],
+        checklist: original.checklist?.map((t, idx) => ({ 
+          ...t, 
+          id: `${newId}-task-${idx}-${Math.random().toString(36).substr(2, 9)}`, 
+          completed: false 
+        })),
+        status: ProjectStatus.ACTIVE,
+      };
+      
+      return { ...prev, projects: [duplicated, ...prev.projects] };
+    });
+    
+    return foundOriginal ? newId : null;
+  }, []);
 
   // Components
   const addWorkLog = useCallback((projectId: string, log: WorkLog) => {
