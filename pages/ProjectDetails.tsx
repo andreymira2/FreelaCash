@@ -195,27 +195,50 @@ const ProjectDetails: React.FC = () => {
             </div>
 
             {/* WhatsApp Billing Banner */}
-            {totals.remaining > 0 && userProfile.pixKey && (
-                <button
-                    onClick={handleWhatsAppBilling}
-                    className="w-full bg-gradient-to-r from-[#25D366] to-[#128C7E] hover:from-[#22c55e] hover:to-[#0d9488] rounded-2xl p-4 flex items-center justify-between gap-4 transition-all shadow-lg shadow-[#25D366]/20 hover:shadow-[#25D366]/30 active:scale-[0.99]"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                            <MessageCircle size={24} className="text-white" />
+            {totals.remaining > 0 && (
+                userProfile.pixKey ? (
+                    <button
+                        onClick={handleWhatsAppBilling}
+                        className="w-full bg-gradient-to-r from-[#25D366] to-[#128C7E] hover:from-[#22c55e] hover:to-[#0d9488] rounded-2xl p-4 flex items-center justify-between gap-4 transition-all shadow-lg shadow-[#25D366]/20 hover:shadow-[#25D366]/30 active:scale-[0.99]"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                                <MessageCircle size={24} className="text-white" />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-white font-bold text-base">Cobrar no WhatsApp</p>
+                                <p className="text-white/80 text-sm">Enviar cobrança via PIX</p>
+                            </div>
                         </div>
-                        <div className="text-left">
-                            <p className="text-white font-bold text-base">Cobrar no WhatsApp</p>
-                            <p className="text-white/80 text-sm">Enviar cobrança via PIX</p>
+                        <div className="text-right">
+                            <p className="text-white/70 text-xs font-medium">Valor pendente</p>
+                            <p className="text-white font-extrabold text-lg">
+                                <CurrencyDisplay amount={totals.remaining} currency={project.currency} />
+                            </p>
                         </div>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white/70 text-xs font-medium">Valor pendente</p>
-                        <p className="text-white font-extrabold text-lg">
-                            <CurrencyDisplay amount={totals.remaining} currency={project.currency} />
-                        </p>
-                    </div>
-                </button>
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => navigate('/settings')}
+                        className="w-full bg-gradient-to-r from-[#25D366]/30 to-[#128C7E]/30 border border-[#25D366]/50 rounded-2xl p-4 flex items-center justify-between gap-4 transition-all hover:from-[#25D366]/40 hover:to-[#128C7E]/40"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-[#25D366]/20 flex items-center justify-center">
+                                <MessageCircle size={24} className="text-[#25D366]" />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-white font-bold text-base">Cobrar no WhatsApp</p>
+                                <p className="text-[#25D366] text-sm">Configure sua chave PIX para cobrar</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-ink-gray text-xs font-medium">Valor pendente</p>
+                            <p className="text-semantic-yellow font-extrabold text-lg">
+                                <CurrencyDisplay amount={totals.remaining} currency={project.currency} />
+                            </p>
+                        </div>
+                    </button>
+                )
             )}
 
             {/* Tabs - Now only 2 */}
