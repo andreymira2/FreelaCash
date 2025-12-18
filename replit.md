@@ -56,6 +56,17 @@ FreelaCash is a financial management platform designed for freelancers, creative
 - **WhatsApp billing on cards**: "Cobrar" button appears on project cards when PIX key configured and balance pending
 - **Optimized calculations**: Proper expense passing and memoized status counts for better performance
 
+### Phase 8: ProjectDetails Page Simplification (December 2024)
+- **Tab consolidation**: Reduced from 4 tabs to 2 ("Resumo" for overview + payments, "Configurar" for project/client settings)
+- **WhatsApp billing in header**: Green "Cobrar" button appears when there's pending balance
+- **Collapsible timer**: Timer hidden by default, toggle button to expand
+- **Duplicate in header**: Quick access to project duplication
+- **Progress bar prominent**: Payment progress visible in header area
+- **Parcelar button**: Quick installment scheduling for remaining balance
+- **Receipt modal**: View payment details in modal format
+- **Installment modal**: Create multiple scheduled payments with options for first payment status
+- **Removed dead code**: Cleaned up unused showExpenseLinker state
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
