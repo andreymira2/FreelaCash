@@ -380,6 +380,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return safeFloat(inBase / rateTo);
   }, [data.settings.exchangeRates]);
 
+  /** @deprecated Use useProjectFinancials from hooks/useFinancialEngine instead */
   const getProjectTotal = useCallback((project: Project, allExpenses?: Expense[]) => {
     let baseRate = 0;
     const rate = isNaN(project.rate) ? 0 : project.rate;

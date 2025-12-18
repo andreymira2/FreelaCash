@@ -74,6 +74,21 @@ FreelaCash is a financial management platform designed for freelancers, creative
 - **"Pagar Todas" with count**: Bulk action button now shows number of pending expenses
 - **Stats counters**: Progress bar header shows count of paid and pending items
 
+### Phase 10: FinancialEngine Refactor (December 2024)
+- **Centralized FinancialEngine module** (`engine/FinancialEngine.ts`): Single source of truth for all monetary calculations, currency conversions, project/expense computations, and timeline projections
+- **Pure function architecture**: Engine uses pure functions with no side effects, receives config and data as parameters
+- **Custom React hooks** (`hooks/useFinancialEngine.ts`): 12+ hooks expose engine functionality to components:
+  - `useFinancialEngine()`: Full engine instance with all computed data
+  - `useFinancialSnapshot()`: High-level summary (income, expenses, profit, MRR, etc.)
+  - `useProjectFinancials(id)`: Single project calculations
+  - `useAllProjectFinancials()`: All projects with pre-computed totals
+  - `useReceivables()`, `useExpenseReminders()`, `useHealthScore()`: Dashboard metrics
+  - `useRecurringExpenseProgress()`, `useRecurringExpenseTotal()`: Expense page data
+  - `useCalendarEvents(month)`: Calendar timeline events
+- **Migrated all pages** to use FinancialEngine hooks instead of duplicated calculation logic
+- **Deprecated legacy `getProjectTotal`** in DataContext (kept for backward compatibility)
+- **Type definitions** (`engine/types.ts`): Strong typing for all financial structures (ProjectTotals, ReceivablePayment, ExpenseReminder, HealthScore, TimelineEvent, etc.)
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -87,6 +102,8 @@ Preferred communication style: Simple, everyday language.
 **Routing:** React Router v7 with HashRouter for client-side navigation. Routes are protected by an `OnboardingGuard` component that redirects new users to profile setup.
 
 **State Management:** React Context API via `DataContext` providing centralized data management for projects, clients, expenses, settings, and user profile. No external state management library (Redux, Zustand) is used.
+
+**Financial Calculations:** Centralized `FinancialEngine` module (`engine/FinancialEngine.ts`) handles all monetary calculations as a single source of truth. UI components consume read-only computed data via memoized React hooks (`hooks/useFinancialEngine.ts`). Mutations still flow through DataContext.
 
 **Styling:** Tailwind CSS with custom configuration including:
 - Custom color palette (brand neon lime, semantic colors)

@@ -1,37 +1,38 @@
-
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { Button, Card, CurrencyDisplay, EmptyState } from '../components/ui';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Wallet, ArrowUpRight, ArrowDownLeft, Flag, CheckCircle2, Clock, Grid3X3, List } from 'lucide-react';
-import { CalendarEvent, Currency } from '../types';
+import { Currency } from '../types';
+import { useCalendarEvents } from '../hooks/useFinancialEngine';
+import { TimelineEvent } from '../engine/types';
 
-const EventPill: React.FC<{ event: CalendarEvent; mainCurrency: Currency; compact?: boolean }> = ({ event, mainCurrency, compact = true }) => {
+const EventPill: React.FC<{ event: TimelineEvent; mainCurrency: Currency; compact?: boolean }> = ({ event, mainCurrency, compact = true }) => {
     let bg = "bg-white/10";
     let text = "text-white";
     let Icon = CalendarIcon;
 
     switch (event.type) {
-        case 'INCOME':
-            bg = event.status === 'PAID' ? 'bg-brand/20' : 'bg-brand/5 border border-brand/20';
+        case 'income':
+            bg = event.status === 'paid' ? 'bg-brand/20' : 'bg-brand/5 border border-brand/20';
             text = "text-brand";
             Icon = ArrowDownLeft;
             break;
-        case 'EXPENSE':
-            bg = event.status === 'PAID' ? 'bg-white/5 opacity-50' : 'bg-semantic-red/10 border border-semantic-red/20';
-            text = event.status === 'PAID' ? "text-ink-gray" : "text-semantic-red";
+        case 'expense':
+            bg = event.status === 'paid' ? 'bg-white/5 opacity-50' : 'bg-semantic-red/10 border border-semantic-red/20';
+            text = event.status === 'paid' ? "text-ink-gray" : "text-semantic-red";
             Icon = ArrowUpRight;
             break;
-        case 'PROJECT_START':
+        case 'project_start':
             bg = 'bg-semantic-blue/10';
             text = 'text-semantic-blue';
             Icon = Flag;
             break;
-        case 'PROJECT_DUE':
+        case 'project_due':
             bg = 'bg-semantic-purple/10';
             text = 'text-semantic-purple';
             Icon = Clock;
             break;
-        case 'TRIAL_END':
+        case 'trial_end':
             bg = 'bg-semantic-yellow/10 border border-semantic-yellow/40';
             text = 'text-semantic-yellow';
             Icon = Wallet;
@@ -43,7 +44,7 @@ const EventPill: React.FC<{ event: CalendarEvent; mainCurrency: Currency; compac
             <div className={`text-xs md:text-[10px] p-1.5 rounded mb-1 truncate flex items-center gap-1 ${bg} ${text}`} title={event.title}>
                 <Icon size={10} className="shrink-0" />
                 <span className="font-bold truncate">{event.title}</span>
-                {event.amount != null && <span className="opacity-80 ml-auto">{mainCurrency === (event.currency || mainCurrency) ? '' : event.currency} {event.amount.toFixed(0)}</span>}
+                {event.amount != null && <span className="opacity-80 ml-auto">{event.currency !== mainCurrency ? event.currency : ''} {event.amount.toFixed(0)}</span>}
             </div>
         );
     }
@@ -55,11 +56,9 @@ const EventPill: React.FC<{ event: CalendarEvent; mainCurrency: Currency; compac
             </div>
             <div className="flex-1 min-w-0">
                 <p className={`font-bold text-sm truncate ${text}`}>{event.title}</p>
-                {event.status && (
-                    <p className="text-xs text-ink-gray">
-                        {event.status === 'PAID' ? 'Pago' : event.status === 'SCHEDULED' ? 'Agendado' : 'Pendente'}
-                    </p>
-                )}
+                <p className="text-xs text-ink-gray">
+                    {event.status === 'paid' ? 'Pago' : event.status === 'pending' ? 'Agendado' : event.status === 'overdue' ? 'Atrasado' : ''}
+                </p>
             </div>
             {event.amount != null && (
                 <div className={`text-right ${text}`}>
@@ -71,7 +70,7 @@ const EventPill: React.FC<{ event: CalendarEvent; mainCurrency: Currency; compac
 };
 
 const CalendarPage: React.FC = () => {
-    const { getCalendarEvents, settings } = useData();
+    const { settings } = useData();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -82,7 +81,7 @@ const CalendarPage: React.FC = () => {
     const handleNextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
     const resetToToday = () => setCurrentDate(new Date());
 
-    const events = useMemo(() => getCalendarEvents(currentDate), [getCalendarEvents, currentDate]);
+    const events = useCalendarEvents(currentDate);
 
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDayOfMonth = new Date(year, month, 1).getDay();
@@ -91,7 +90,7 @@ const CalendarPage: React.FC = () => {
     const blanks = Array.from({ length: firstDayOfMonth }, (_, i) => i);
 
     const eventsByDay = useMemo(() => {
-        const map: Record<number, CalendarEvent[]> = {};
+        const map: Record<number, TimelineEvent[]> = {};
         events.forEach(e => {
             const day = e.date.getDate();
             if (!map[day]) map[day] = [];

@@ -4,13 +4,15 @@ import { useData } from '../context/DataContext';
 import { Card, Button, Badge, CurrencyDisplay, Input, Avatar, ProgressBar, Select } from '../components/ui';
 import { ProjectStatus, ProjectContractType, Payment, PaymentStatus, Client, Currency, CURRENCY_SYMBOLS } from '../types';
 import { ArrowLeft, Clock, Trash2, DollarSign, Edit2, User, Plus, CheckCircle2, Circle, FileText, Calendar, ShieldCheck, MessageCircle, Copy, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { useProjectFinancials } from '../hooks/useFinancialEngine';
 
 const ProjectDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { projects, clients, expenses, userProfile, addWorkLog, updateProject, getProjectTotal, deleteProject, duplicateProject, addPayment, updatePayment, deletePayment, addProjectAdjustment, updateClient, addClient } = useData();
+    const { projects, clients, userProfile, addWorkLog, updateProject, deleteProject, duplicateProject, addPayment, updatePayment, deletePayment, addProjectAdjustment, updateClient, addClient } = useData();
     const navigate = useNavigate();
 
     const project = projects.find(p => p.id === id);
+    const projectFinancials = useProjectFinancials(id || '');
 
     const [activeTab, setActiveTab] = useState<'SUMMARY' | 'CONFIG'>('SUMMARY');
     const [showEditProject, setShowEditProject] = useState(false);
@@ -47,9 +49,18 @@ const ProjectDetails: React.FC = () => {
     }, [project, clients]);
 
     const totals = useMemo(() => {
-        if (!project) return { gross: 0, net: 0, paid: 0, profit: 0, remaining: 0, expenseTotal: 0, adjustments: 0 };
-        return getProjectTotal(project, expenses);
-    }, [project, expenses, getProjectTotal]);
+        if (!projectFinancials) return { gross: 0, net: 0, paid: 0, profit: 0, remaining: 0, expenseTotal: 0, adjustments: 0, fees: 0 };
+        return {
+            gross: projectFinancials.gross,
+            net: projectFinancials.net,
+            paid: projectFinancials.paid,
+            profit: projectFinancials.profit,
+            remaining: projectFinancials.remaining,
+            expenseTotal: projectFinancials.expenseTotal,
+            adjustments: projectFinancials.adjustments,
+            fees: projectFinancials.fees
+        };
+    }, [projectFinancials]);
 
     useEffect(() => {
         let interval: number | undefined;
@@ -386,7 +397,7 @@ const ProjectDetails: React.FC = () => {
                                     </div>
                                     <div className="flex justify-between text-ink-gray">
                                         <span>Taxas ({project.platformFee}%)</span>
-                                        <span className="text-semantic-red">- <CurrencyDisplay amount={totals.gross * (project.platformFee / 100)} currency={project.currency} /></span>
+                                        <span className="text-semantic-red">- <CurrencyDisplay amount={totals.fees} currency={project.currency} /></span>
                                     </div>
                                     <div className="border-t border-white/10 pt-3 flex justify-between text-white font-bold text-base">
                                         <span>Lucro Real</span>

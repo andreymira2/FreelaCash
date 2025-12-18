@@ -6,6 +6,7 @@ import { safeFloat } from '../utils/format';
 import { Printer, FileText, TrendingUp, PieChart as PieChartIcon, BarChart3, Award } from 'lucide-react';
 import { ProjectStatus, Currency } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
+import { useAllProjectFinancials, useCurrencyConverter } from '../hooks/useFinancialEngine';
 
 const getStatusLabel = (status: ProjectStatus): string => {
     switch (status) {
@@ -18,14 +19,18 @@ const getStatusLabel = (status: ProjectStatus): string => {
 };
 
 const Reports: React.FC = () => {
-    const { projects, expenses, getProjectTotal, settings, convertCurrency } = useData();
+    const { projects, expenses, settings, convertCurrency } = useData();
+    const projectFinancials = useAllProjectFinancials();
+    
+    const financialsMap = useMemo(() => {
+        const map: Record<string, typeof projectFinancials[0]> = {};
+        projectFinancials.forEach(pf => { map[pf.projectId] = pf; });
+        return map;
+    }, [projectFinancials]);
 
     const totalNetIncome = useMemo(() => {
-        return projects.reduce((acc, p) => {
-            const { net } = getProjectTotal(p);
-            return safeFloat(acc + convertCurrency(net, p.currency, settings.mainCurrency));
-        }, 0);
-    }, [projects, getProjectTotal, convertCurrency, settings.mainCurrency]);
+        return projectFinancials.reduce((acc, pf) => safeFloat(acc + pf.netConverted), 0);
+    }, [projectFinancials]);
 
     const monthlyData = useMemo(() => {
         const data: Record<string, { name: string; income: number; expense: number }> = {};
@@ -64,43 +69,44 @@ const Reports: React.FC = () => {
         const data: Record<string, number> = {};
         projects.forEach(p => {
             const cat = p.category || 'Sem Categoria';
-            const { net } = getProjectTotal(p);
-            const val = convertCurrency(net, p.currency, settings.mainCurrency);
+            const pf = financialsMap[p.id];
+            const val = pf ? pf.netConverted : 0;
             data[cat] = safeFloat((data[cat] || 0) + val);
         });
         return Object.entries(data)
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
             .slice(0, 5);
-    }, [projects, getProjectTotal, convertCurrency, settings.mainCurrency]);
+    }, [projects, financialsMap]);
 
     const topClients = useMemo(() => {
         const clients: Record<string, number> = {};
         projects.forEach(p => {
-            const { paid } = getProjectTotal(p);
-            const val = convertCurrency(paid, p.currency, settings.mainCurrency);
+            const pf = financialsMap[p.id];
+            const val = pf ? pf.paidConverted : 0;
             clients[p.clientName] = safeFloat((clients[p.clientName] || 0) + val);
         });
         return Object.entries(clients)
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
             .slice(0, 3);
-    }, [projects, getProjectTotal, convertCurrency, settings.mainCurrency]);
+    }, [projects, financialsMap]);
 
     const handlePrint = () => window.print();
 
     const downloadCSV = () => {
         const headers = ["Data", "Cliente", "Categoria", "Status", "Valor Liq.", "Valor Convertido"];
         const rows = projects.map(p => {
-            const { net } = getProjectTotal(p);
-            const netConverted = convertCurrency(net, p.currency, settings.mainCurrency).toFixed(2);
+            const pf = financialsMap[p.id];
+            const net = pf?.net || 0;
+            const netConverted = pf?.netConverted || 0;
             return [
                 new Date(p.createdAt).toISOString().split('T')[0],
                 `"${p.clientName}"`,
                 p.category,
                 getStatusLabel(p.status),
                 `${p.currency} ${net.toFixed(2)}`,
-                `${settings.mainCurrency} ${netConverted}`
+                `${settings.mainCurrency} ${netConverted.toFixed(2)}`
             ].join(",");
         });
         const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
@@ -235,7 +241,9 @@ const Reports: React.FC = () => {
                         </thead>
                         <tbody>
                             {projects.sort((a, b) => b.createdAt - a.createdAt).map(p => {
-                                const { gross, net } = getProjectTotal(p);
+                                const pf = financialsMap[p.id];
+                                const gross = pf?.gross || 0;
+                                const net = pf?.net || 0;
                                 return (
                                     <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                                         <td className="p-5">

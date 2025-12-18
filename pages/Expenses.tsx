@@ -7,6 +7,7 @@ import { safeFloat, parseLocalDate } from '../utils/format';
 import { Plus, Trash2, Wallet, X, HelpCircle, CheckCircle2, Clock, AlertTriangle, Zap, Receipt, Store, Search } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useRecurringExpenseProgress, useRecurringExpenseTotal, useCurrencyConverter } from '../hooks/useFinancialEngine';
 
 const IconMapper: React.FC<{ name: string; size?: number; className?: string }> = ({ name, size = 16, className = '' }) => {
     // @ts-ignore
@@ -24,7 +25,10 @@ interface ExpenseFormState {
 }
 
 const Expenses: React.FC = () => {
-    const { expenses, addExpense, deleteExpense, toggleExpensePayment, bulkMarkExpenseAsPaid, settings, convertCurrency, dateRange, setDateRange, getDateRangeFilter, getFutureRecurringIncome } = useData();
+    const { expenses, addExpense, deleteExpense, toggleExpensePayment, bulkMarkExpenseAsPaid, settings, convertCurrency, dateRange, setDateRange, getDateRangeFilter } = useData();
+    
+    const recurringProgress = useRecurringExpenseProgress();
+    const monthlyBurnRate = useRecurringExpenseTotal();
     const navigate = useNavigate();
     const [showForm, setShowForm] = useState(false);
     const [formError, setFormError] = useState<string>('');
@@ -85,7 +89,7 @@ const Expenses: React.FC = () => {
         setFormData(defaultForm); setShowForm(false);
     };
 
-    const { recurringExpenses, variableExpenses, monthlyBurnRate } = useMemo(() => {
+    const { recurringExpenses, variableExpenses } = useMemo(() => {
         let filtered = expenses;
         if (searchTerm) {
             const lower = searchTerm.toLowerCase();
@@ -95,17 +99,8 @@ const Expenses: React.FC = () => {
         const recurring = filtered.filter(e => e.isRecurring);
         const variable = filtered.filter(e => !e.isRecurring);
 
-        let burn = 0;
-        recurring.forEach(e => {
-            const isTrialActive = e.isTrial && e.trialEndDate && new Date(e.trialEndDate) > new Date();
-            if (!isTrialActive) {
-                let val = convertCurrency(e.amount, e.currency, settings.mainCurrency);
-                if (e.recurringFrequency === 'YEARLY') val = val / 12;
-                burn = safeFloat(burn + val);
-            }
-        });
-        return { recurringExpenses: recurring, variableExpenses: variable, monthlyBurnRate: burn };
-    }, [expenses, settings.mainCurrency, convertCurrency, searchTerm]);
+        return { recurringExpenses: recurring, variableExpenses: variable };
+    }, [expenses, searchTerm]);
 
     const variableFiltered = useMemo(() => {
         const range = getDateRangeFilter();

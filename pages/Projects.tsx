@@ -4,11 +4,19 @@ import { CurrencyDisplay, Badge, Avatar, Button, EmptyState, PageHeader } from '
 import { ProjectStatus, ProjectContractType, PaymentStatus, Project, Payment, CURRENCY_SYMBOLS } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Repeat, Check, MessageCircle } from 'lucide-react';
+import { useAllProjectFinancials } from '../hooks/useFinancialEngine';
 
 const Projects: React.FC = () => {
-    const { projects, expenses, getProjectTotal, updatePayment, userProfile } = useData();
+    const { projects, updatePayment, userProfile } = useData();
     const navigate = useNavigate();
     const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'ALL'>('ALL');
+
+    const projectFinancials = useAllProjectFinancials();
+    const financialsMap = useMemo(() => {
+        const map: Record<string, typeof projectFinancials[0]> = {};
+        projectFinancials.forEach(pf => { map[pf.projectId] = pf; });
+        return map;
+    }, [projectFinancials]);
 
     const statusCounts = useMemo(() => {
         const counts: Record<string, number> = { ALL: projects.length };
@@ -47,7 +55,6 @@ const Projects: React.FC = () => {
                 }
             />
 
-            {/* Filter Bar with Counts */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 {(['ALL', ProjectStatus.ACTIVE, ProjectStatus.ONGOING, ProjectStatus.COMPLETED, ProjectStatus.PAID] as const).map((status) => {
                     const getLabel = (s: typeof status) => {
@@ -94,11 +101,11 @@ const Projects: React.FC = () => {
                 <div className="space-y-3">
                     {filteredProjects.length > 0 ? (
                         filteredProjects.map(p => {
-                            const total = getProjectTotal(p, expenses);
+                            const total = financialsMap[p.id];
+                            if (!total) return null;
+                            
                             const isRetainer = p.contractType === ProjectContractType.RETAINER || p.contractType === ProjectContractType.RECURRING_FIXED;
-                            const hasOverdue = (p.payments || []).some(pay => 
-                                pay.status === PaymentStatus.SCHEDULED && new Date(pay.date) < new Date()
-                            );
+                            const hasOverdue = total.isOverdue;
                             const nextScheduledPayment = (p.payments || [])
                                 .filter(pay => pay.status === PaymentStatus.SCHEDULED)
                                 .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
