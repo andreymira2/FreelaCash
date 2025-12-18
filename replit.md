@@ -48,6 +48,14 @@ FreelaCash is a financial management platform designed for freelancers, creative
 - **Mobile quick actions bar**: Compact action row (Receber/Pagar/+) visible only on mobile
 - **Improved empty states**: Better visual hierarchy with icons, headings, and actionable CTAs
 
+### Phase 7: Projects Section UX Improvements (December 2024)
+- **Progress bar on mobile**: Payment progress now visible on all screen sizes (removed desktop-only restriction)
+- **Overdue payment indicator**: Red pulsing dot and red border on projects with overdue scheduled payments
+- **Inline Quick Pay**: "Confirmar R$X" button to mark scheduled payments as paid directly from project list
+- **Status filter counts**: Each filter button shows count badge (e.g., "Em Andamento (3)")
+- **WhatsApp billing on cards**: "Cobrar" button appears on project cards when PIX key configured and balance pending
+- **Optimized calculations**: Proper expense passing and memoized status counts for better performance
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
