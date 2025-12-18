@@ -67,6 +67,13 @@ FreelaCash is a financial management platform designed for freelancers, creative
 - **Installment modal**: Create multiple scheduled payments with options for first payment status
 - **Removed dead code**: Cleaned up unused showExpenseLinker state
 
+### Phase 9: Expenses Page UX Improvements (December 2024)
+- **Monthly progress bar**: Shows paid vs pending recurring expenses with visual progress and percentage
+- **Trial expiring indicator**: Badge changes color (yellow → red pulsing) as trial expires, with clear messages ("Expira amanhã!", "Trial expirado!")
+- **Inline pay buttons**: Labeled buttons showing "Pago" (green) or "Pagar" (yellow) instead of just icons
+- **"Pagar Todas" with count**: Bulk action button now shows number of pending expenses
+- **Stats counters**: Progress bar header shows count of paid and pending items
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
