@@ -22,6 +22,10 @@ export interface ProjectFinancials {
   isOverdue: boolean;
   overdueAmount: number;
   nextPayment?: { date: Date; amount: number };
+  // Converted to main currency
+  grossConverted: number;
+  netConverted: number;
+  paidConverted: number;
 }
 
 export interface ExpenseSnapshot {

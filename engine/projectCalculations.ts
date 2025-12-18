@@ -73,6 +73,10 @@ export function calculateProjectFinancials(
   const profit = Math.max(0, safeFloat(paid - expenseTotal));
   const remaining = Math.max(0, safeFloat(net - paid));
 
+  const grossConverted = convertCurrency(gross, project.currency, config.mainCurrency, config.exchangeRates);
+  const netConverted = convertCurrency(net, project.currency, config.mainCurrency, config.exchangeRates);
+  const paidConverted = convertCurrency(paid, project.currency, config.mainCurrency, config.exchangeRates);
+
   return {
     projectId: project.id,
     clientName: project.clientName,
@@ -88,7 +92,10 @@ export function calculateProjectFinancials(
     profit,
     isOverdue: hasOverdue,
     overdueAmount,
-    nextPayment
+    nextPayment,
+    grossConverted,
+    netConverted,
+    paidConverted
   };
 }
 
