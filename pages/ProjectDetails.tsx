@@ -145,15 +145,6 @@ const ProjectDetails: React.FC = () => {
                     <ArrowLeft size={20} /> <span className="font-bold">Voltar</span>
                 </button>
                 <div className="flex items-center gap-2">
-                    {totals.remaining > 0 && userProfile.pixKey && (
-                        <button
-                            onClick={handleWhatsAppBilling}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-semantic-green/20 text-semantic-green hover:bg-semantic-green/30 transition-all"
-                        >
-                            <MessageCircle size={16} />
-                            <span className="hidden sm:inline">Cobrar</span>
-                        </button>
-                    )}
                     <button
                         onClick={handleDuplicate}
                         className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-white/5 text-ink-gray hover:text-white hover:bg-white/10 transition-all"
@@ -202,6 +193,30 @@ const ProjectDetails: React.FC = () => {
                     <div className="h-full bg-brand" style={{ width: `${Math.min(progressPercent, 100)}%` }} />
                 </div>
             </div>
+
+            {/* WhatsApp Billing Banner */}
+            {totals.remaining > 0 && userProfile.pixKey && (
+                <button
+                    onClick={handleWhatsAppBilling}
+                    className="w-full bg-gradient-to-r from-[#25D366] to-[#128C7E] hover:from-[#22c55e] hover:to-[#0d9488] rounded-2xl p-4 flex items-center justify-between gap-4 transition-all shadow-lg shadow-[#25D366]/20 hover:shadow-[#25D366]/30 active:scale-[0.99]"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                            <MessageCircle size={24} className="text-white" />
+                        </div>
+                        <div className="text-left">
+                            <p className="text-white font-bold text-base">Cobrar no WhatsApp</p>
+                            <p className="text-white/80 text-sm">Enviar cobrança via PIX</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white/70 text-xs font-medium">Valor pendente</p>
+                        <p className="text-white font-extrabold text-lg">
+                            <CurrencyDisplay amount={totals.remaining} currency={project.currency} />
+                        </p>
+                    </div>
+                </button>
+            )}
 
             {/* Tabs - Now only 2 */}
             <div className="border-b border-white/10 flex gap-6">
