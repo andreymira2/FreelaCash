@@ -33,6 +33,10 @@ FreelaCash is a financial management platform designed for freelancers, creative
 - **A Receber (Receivables)**: Shows pending scheduled payments with overdue highlighting
 - **Vencimentos (Expense Reminders)**: Upcoming recurring expenses due in next 7 days
 
+### Phase 5: UX Improvements
+- **Calendar List View**: Toggle between grid and agenda/list view for better mobile experience
+- **Tax Reserve Indicator**: Configure percentage in Settings (ex: MEI 5%, Simples 6-15%); Dashboard shows calculated reserve amount
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

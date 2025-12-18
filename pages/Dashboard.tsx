@@ -332,6 +332,16 @@ const Dashboard: React.FC = () => {
                             <p className="text-xs md:text-[10px] font-bold text-ink-dim uppercase mb-1 flex items-center gap-1"><RefreshCcw size={10} /> MRR Recorrente</p>
                             <p className="text-lg font-bold text-semantic-purple"><CurrencyDisplay amount={recurringIncome} currency={settings.mainCurrency} /></p>
                         </div>
+                        {(settings.taxReservePercent || 0) > 0 && (
+                            <div>
+                                <p className="text-xs md:text-[10px] font-bold text-ink-dim uppercase mb-1 flex items-center gap-1">
+                                    <AlertTriangle size={10} /> Reserva Imposto ({settings.taxReservePercent}%)
+                                </p>
+                                <p className="text-lg font-bold text-semantic-yellow">
+                                    <CurrencyDisplay amount={dashboardData.current.income * (settings.taxReservePercent || 0) / 100} currency={settings.mainCurrency} />
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </Card>
 

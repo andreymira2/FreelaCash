@@ -68,7 +68,8 @@ const DEFAULT_SETTINGS: AppSettings = {
     [Currency.USD]: 5.0,
     [Currency.EUR]: 5.5,
     [Currency.GBP]: 6.5
-  }
+  },
+  taxReservePercent: 0
 };
 
 const INITIAL_DATA: AppData = {
@@ -96,7 +97,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           projects: parsed.projects || [],
           clients: parsed.clients || [],
           expenses: parsed.expenses || [],
-          settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
+          settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}), taxReservePercent: parsed.settings?.taxReservePercent ?? 0 },
           userProfile: { ...INITIAL_DATA.userProfile, ...(parsed.userProfile || {}) }
         };
       }

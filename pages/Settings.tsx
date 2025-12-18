@@ -256,6 +256,20 @@ const Settings: React.FC = () => {
                                 <p className="text-sm text-ink-gray mb-6">Alvo para o gráfico de progresso do Dashboard.</p>
                                 <DarkInput type="number" value={settingsForm.monthlyGoal} onChange={(e: any) => setSettingsForm({ ...settingsForm, monthlyGoal: parseFloat(e.target.value) })} label="Valor da Meta" />
                             </DarkCard>
+                            <DarkCard>
+                                <h3 className="text-lg font-bold text-white mb-2">Reserva para Impostos</h3>
+                                <p className="text-sm text-ink-gray mb-6">Percentual da receita a separar para impostos (ex: MEI = 5%, Simples = 6-15%).</p>
+                                <DarkInput 
+                                    type="number" 
+                                    min="0" 
+                                    max="100" 
+                                    step="0.5"
+                                    value={settingsForm.taxReservePercent || 0} 
+                                    onChange={(e: any) => setSettingsForm({ ...settingsForm, taxReservePercent: parseFloat(e.target.value) || 0 })} 
+                                    label="Percentual (%)" 
+                                    placeholder="0"
+                                />
+                            </DarkCard>
                         </div>
 
                         <DarkCard>

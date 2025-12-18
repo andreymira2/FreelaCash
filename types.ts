@@ -168,6 +168,7 @@ export interface AppSettings {
   monthlyGoal: number;
   mainCurrency: Currency;
   exchangeRates: Record<Currency, number>;
+  taxReservePercent?: number;
 }
 
 export interface AppData {
