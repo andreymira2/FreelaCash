@@ -1,13 +1,13 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { Card, CurrencyDisplay, Button, Avatar, DateRangeSelect, EmptyState, TrendIndicator, Input, Select, Badge, PageHeader } from '../components/ui';
-import { ProjectStatus, PaymentStatus, Currency } from '../types';
+import { ProjectStatus, PaymentStatus, Currency, Payment } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Wallet, X, ArrowUpRight, ArrowDownLeft, Bell, Activity, RefreshCcw, Briefcase, Users, ArrowRight, Target, Zap, Clock, CheckCircle2, AlertTriangle, TrendingUp, Heart, Calendar } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-    const { projects, expenses, getProjectTotal, settings, convertCurrency, userProfile, dateRange, setDateRange, getDateRangeFilter, addPayment, getFutureRecurringIncome } = useData();
+    const { projects, expenses, getProjectTotal, settings, convertCurrency, userProfile, dateRange, setDateRange, getDateRangeFilter, addPayment, getFutureRecurringIncome, updatePayment, toggleExpensePayment } = useData();
     const navigate = useNavigate();
 
     const [showQuickPay, setShowQuickPay] = useState(false);
@@ -192,15 +192,15 @@ const Dashboard: React.FC = () => {
         upcomingExpenses.sort((a, b) => a.dueDay - b.dueDay);
 
         // Pending Receivables (scheduled payments not yet paid)
-        const pendingReceivables: Array<{ projectId: string; clientName: string; amount: number; currency: Currency; date: Date; isOverdue: boolean }> = [];
+        const pendingReceivables: Array<{ projectId: string; payment: Payment; clientName: string; currency: Currency; date: Date; isOverdue: boolean }> = [];
         projects.forEach(p => {
             p.payments?.forEach(pay => {
                 if (pay.status === PaymentStatus.SCHEDULED) {
                     const payDate = new Date(pay.date);
                     pendingReceivables.push({
                         projectId: p.id,
+                        payment: pay,
                         clientName: p.clientName,
-                        amount: pay.amount,
                         currency: p.currency,
                         date: payDate,
                         isOverdue: payDate < today
@@ -241,8 +241,28 @@ const Dashboard: React.FC = () => {
         setShowQuickPay(false); setQuickPayProjectId(''); setQuickPayAmount('');
     };
 
+    const handleMarkReceivablePaid = (projectId: string, payment: Payment, e: React.MouseEvent) => {
+        e.stopPropagation();
+        updatePayment(projectId, { ...payment, status: PaymentStatus.PAID });
+    };
+
+    const handleMarkExpensePaid = (expenseId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        toggleExpensePayment(expenseId, new Date());
+    };
+
     const recurringIncome = getFutureRecurringIncome();
-    const activeProjectsList = projects.filter(p => p.status === ProjectStatus.ACTIVE || p.status === ProjectStatus.ONGOING);
+    const activeProjectsList = useMemo(() => 
+        projects.filter(p => p.status === ProjectStatus.ACTIVE || p.status === ProjectStatus.ONGOING),
+        [projects]
+    );
+
+    // Auto-select project if only one active
+    useEffect(() => {
+        if (showQuickPay && activeProjectsList.length === 1 && !quickPayProjectId) {
+            setQuickPayProjectId(activeProjectsList[0].id);
+        }
+    }, [showQuickPay, activeProjectsList, quickPayProjectId]);
 
     // Goal Progress Calculation
     const goalPercent = Math.min(100, Math.round((dashboardData.current.income / (settings.monthlyGoal || 1)) * 100));
@@ -252,7 +272,7 @@ const Dashboard: React.FC = () => {
     const QuickActionButton = ({ icon: Icon, label, onClick, colorClass = "bg-white/5 hover:bg-white/10 text-white" }: any) => (
         <button onClick={onClick} className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl transition-all active:scale-95 ${colorClass} w-full border border-white/5`}>
             <Icon size={24} />
-            <span className="text-xs md:text-[10px] font-bold uppercase tracking-wider">{label}</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
         </button>
     );
 
@@ -275,11 +295,7 @@ const Dashboard: React.FC = () => {
                 }
                 subtitle=""
                 action={
-                    <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-                        <div className="hidden md:flex gap-2 mr-4">
-                            <Button variant="ghost" onClick={() => setShowQuickPay(true)} className="h-10 text-xs bg-white/5 text-ink-gray hover:text-white"><ArrowDownLeft size={16} /> Receber</Button>
-                            <Button variant="ghost" onClick={() => navigate('/expenses')} className="h-10 text-xs bg-white/5 text-ink-gray hover:text-white"><ArrowUpRight size={16} /> Pagar</Button>
-                        </div>
+                    <div className="flex items-center gap-3">
                         <DateRangeSelect value={dateRange} onChange={setDateRange} />
                         <Button variant="primary" onClick={() => navigate('/add')} className="h-10 text-xs px-5 shadow-neon">
                             <Plus size={16} strokeWidth={3} /> <span className="hidden sm:inline">Projeto</span>
@@ -329,7 +345,7 @@ const Dashboard: React.FC = () => {
                             </p>
                         </div>
                         <div>
-                            <p className="text-xs md:text-[10px] font-bold text-ink-dim uppercase mb-1 flex items-center gap-1"><RefreshCcw size={10} /> MRR Recorrente</p>
+                            <p className="text-xs md:text-[10px] font-bold text-ink-dim uppercase mb-1 flex items-center gap-1"><RefreshCcw size={10} /> Receita Recorrente</p>
                             <p className="text-lg font-bold text-semantic-purple"><CurrencyDisplay amount={recurringIncome} currency={settings.mainCurrency} /></p>
                         </div>
                         {(settings.taxReservePercent || 0) > 0 && (
@@ -397,15 +413,22 @@ const Dashboard: React.FC = () => {
                                 <div 
                                     key={idx} 
                                     onClick={() => navigate(`/project/${item.projectId}`)}
-                                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${item.isOverdue ? 'bg-semantic-red/10 hover:bg-semantic-red/20' : 'bg-white/5 hover:bg-white/10'}`}
+                                    className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${item.isOverdue ? 'bg-semantic-red/10 hover:bg-semantic-red/20' : 'bg-white/5 hover:bg-white/10'}`}
                                 >
+                                    <button
+                                        onClick={(e) => handleMarkReceivablePaid(item.projectId, item.payment, e)}
+                                        className="w-7 h-7 shrink-0 rounded-full bg-white/10 hover:bg-brand/20 flex items-center justify-center transition-colors group"
+                                        title="Marcar como recebido"
+                                    >
+                                        <CheckCircle2 size={14} className="text-ink-gray group-hover:text-brand" />
+                                    </button>
                                     <div className="min-w-0 flex-1">
                                         <p className="text-sm font-medium text-white truncate">{item.clientName}</p>
                                         <p className={`text-xs ${item.isOverdue ? 'text-semantic-red font-bold' : 'text-ink-gray'}`}>
                                             {item.isOverdue ? 'ATRASADO' : item.date.toLocaleDateString()}
                                         </p>
                                     </div>
-                                    <span className="font-bold text-sm text-white"><CurrencyDisplay amount={item.amount} currency={item.currency} /></span>
+                                    <span className="font-bold text-sm text-white"><CurrencyDisplay amount={item.payment.amount} currency={item.currency} /></span>
                                 </div>
                             ))}
                         </div>
@@ -429,14 +452,24 @@ const Dashboard: React.FC = () => {
                                 <div 
                                     key={exp.id}
                                     onClick={() => navigate(`/expenses/${exp.id}`)}
-                                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${exp.isPaid ? 'bg-brand/10 hover:bg-brand/20' : 'bg-white/5 hover:bg-white/10'}`}
+                                    className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${exp.isPaid ? 'bg-brand/10 hover:bg-brand/20' : 'bg-white/5 hover:bg-white/10'}`}
                                 >
-                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                        {exp.isPaid ? <CheckCircle2 size={14} className="text-brand shrink-0" /> : <Clock size={14} className="text-semantic-yellow shrink-0" />}
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium text-white truncate">{exp.title}</p>
-                                            <p className="text-xs text-ink-gray">Dia {exp.dueDay}</p>
+                                    {!exp.isPaid ? (
+                                        <button
+                                            onClick={(e) => handleMarkExpensePaid(exp.id, e)}
+                                            className="w-7 h-7 shrink-0 rounded-full bg-white/10 hover:bg-brand/20 flex items-center justify-center transition-colors group"
+                                            title="Marcar como pago"
+                                        >
+                                            <Clock size={14} className="text-semantic-yellow group-hover:text-brand" />
+                                        </button>
+                                    ) : (
+                                        <div className="w-7 h-7 shrink-0 rounded-full bg-brand/20 flex items-center justify-center">
+                                            <CheckCircle2 size={14} className="text-brand" />
                                         </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-white truncate">{exp.title}</p>
+                                        <p className="text-xs text-ink-gray">Dia {exp.dueDay}</p>
                                     </div>
                                     <span className={`font-bold text-sm ${exp.isPaid ? 'text-ink-dim line-through' : 'text-white'}`}>
                                         <CurrencyDisplay amount={exp.amount} currency={exp.currency} />
