@@ -165,8 +165,22 @@ const Dashboard: React.FC = () => {
             }
         });
 
-        // Sort feed by date desc and take top 10
-        const recentFeed = feedItems.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
+        // Sort feed by date desc and take top 15, then group by time period
+        const sortedFeed = feedItems.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 15);
+        
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekStart = new Date(todayStart);
+        weekStart.setDate(weekStart.getDate() - 7);
+        
+        const groupedFeed: { label: string; items: typeof sortedFeed }[] = [];
+        const todayItems = sortedFeed.filter(item => item.date >= todayStart);
+        const weekItems = sortedFeed.filter(item => item.date < todayStart && item.date >= weekStart);
+        const olderItems = sortedFeed.filter(item => item.date < weekStart);
+        
+        if (todayItems.length > 0) groupedFeed.push({ label: 'Hoje', items: todayItems });
+        if (weekItems.length > 0) groupedFeed.push({ label: 'Últimos 7 Dias', items: weekItems });
+        if (olderItems.length > 0) groupedFeed.push({ label: 'Anteriores', items: olderItems });
 
         // Upcoming Expense Reminders (next 7 days)
         const today = new Date();
@@ -225,7 +239,7 @@ const Dashboard: React.FC = () => {
         );
         const clampedHealth = Math.max(0, Math.min(100, healthScore));
 
-        return { current, previous, activeAssets, recentFeed, upcomingExpenses, pendingReceivables, healthScore: clampedHealth };
+        return { current, previous, activeAssets, groupedFeed, upcomingExpenses, pendingReceivables, healthScore: clampedHealth };
     }, [projects, expenses, dateRange, settings.mainCurrency, settings.monthlyGoal, getProjectTotal, convertCurrency, getDateRangeFilter]);
 
     const handleQuickPaySubmit = (e: React.FormEvent) => {
@@ -303,6 +317,28 @@ const Dashboard: React.FC = () => {
                     </div>
                 }
             />
+
+            {/* Mobile Quick Actions Bar - visible on small screens only */}
+            <div className="flex lg:hidden gap-2 -mt-2">
+                <button 
+                    onClick={() => setShowQuickPay(true)} 
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-brand/10 text-brand font-bold text-sm active:scale-95 transition-all"
+                >
+                    <ArrowDownLeft size={16} /> Receber
+                </button>
+                <button 
+                    onClick={() => navigate('/expenses')} 
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white/5 text-white font-bold text-sm active:scale-95 transition-all"
+                >
+                    <ArrowUpRight size={16} /> Pagar
+                </button>
+                <button 
+                    onClick={() => navigate('/add')} 
+                    className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white/5 text-white font-bold text-sm active:scale-95 transition-all"
+                >
+                    <Plus size={16} />
+                </button>
+            </div>
 
             {/* 2. Main Command Center (Metrics) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -495,22 +531,31 @@ const Dashboard: React.FC = () => {
                     </div>
 
                     <div className="bg-base-card border border-white/5 rounded-3xl p-1">
-                        {dashboardData.recentFeed.length > 0 ? (
-                            <div className="divide-y divide-white/5">
-                                {dashboardData.recentFeed.map((item) => (
-                                    <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-white/5 transition-colors rounded-2xl group">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${item.type === 'INCOME' ? 'bg-brand/10 text-brand' : 'bg-semantic-red/10 text-semantic-red'}`}>
-                                            {item.type === 'INCOME' ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                        {dashboardData.groupedFeed.length > 0 ? (
+                            <div className="space-y-1">
+                                {dashboardData.groupedFeed.map((group) => (
+                                    <div key={group.label}>
+                                        <div className="px-4 py-2 sticky top-0 bg-base-card/95 backdrop-blur-sm">
+                                            <span className="text-[11px] font-bold text-ink-dim uppercase tracking-widest">{group.label}</span>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-start">
-                                                <h4 className="text-sm font-bold text-white truncate">{item.title}</h4>
-                                                <span className="text-xs md:text-[10px] text-ink-dim whitespace-nowrap">{item.date.toLocaleDateString()}</span>
-                                            </div>
-                                            <p className="text-xs text-ink-gray truncate">{item.subtitle}</p>
-                                        </div>
-                                        <div className={`text-sm font-bold ${item.type === 'INCOME' ? 'text-brand' : 'text-white'}`}>
-                                            {item.type === 'EXPENSE' && '-'} <CurrencyDisplay amount={item.amount} currency={item.currency} />
+                                        <div className="divide-y divide-white/5">
+                                            {group.items.map((item) => (
+                                                <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-white/5 transition-colors rounded-2xl group">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${item.type === 'INCOME' ? 'bg-brand/10 text-brand' : 'bg-semantic-red/10 text-semantic-red'}`}>
+                                                        {item.type === 'INCOME' ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex justify-between items-start">
+                                                            <h4 className="text-sm font-bold text-white truncate">{item.title}</h4>
+                                                            <span className="text-xs text-ink-dim whitespace-nowrap">{item.date.toLocaleDateString()}</span>
+                                                        </div>
+                                                        <p className="text-xs text-ink-gray truncate">{item.subtitle}</p>
+                                                    </div>
+                                                    <div className={`text-sm font-bold ${item.type === 'INCOME' ? 'text-brand' : 'text-white'}`}>
+                                                        {item.type === 'EXPENSE' && '-'} <CurrencyDisplay amount={item.amount} currency={item.currency} />
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 ))}
@@ -564,9 +609,13 @@ const Dashboard: React.FC = () => {
                                 </div>
                             ))
                         ) : (
-                            <div className="p-8 border border-dashed border-white/10 rounded-2xl text-center">
-                                <p className="text-xs text-ink-gray mb-3">Sem projetos ativos.</p>
-                                <Button variant="outline" onClick={() => navigate('/add')} className="text-xs w-full">Criar Projeto</Button>
+                            <div className="p-6 border border-dashed border-white/10 rounded-2xl text-center bg-white/[0.02]">
+                                <Briefcase size={24} className="text-ink-dim mx-auto mb-3" />
+                                <p className="text-sm font-medium text-white mb-1">Nenhum projeto ativo</p>
+                                <p className="text-xs text-ink-gray mb-4">Comece adicionando seu primeiro projeto freelancer.</p>
+                                <Button variant="primary" onClick={() => navigate('/add')} className="text-xs">
+                                    <Plus size={14} /> Criar Projeto
+                                </Button>
                             </div>
                         )}
                     </div>
