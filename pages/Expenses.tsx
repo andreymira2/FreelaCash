@@ -171,6 +171,15 @@ const Expenses: React.FC = () => {
         return Math.ceil(diff / (1000 * 60 * 60 * 24));
     };
 
+    // Calculate paid vs pending stats for recurring expenses
+    const recurringStats = useMemo(() => {
+        const total = recurringExpenses.length;
+        const paid = recurringExpenses.filter(e => getRecurringStatus(e) === 'PAID').length;
+        const pending = total - paid;
+        const percent = total > 0 ? (paid / total) * 100 : 0;
+        return { total, paid, pending, percent };
+    }, [recurringExpenses, getRecurringStatus]);
+
     return (
         <div className="space-y-4 md:space-y-6 pb-24 animate-in fade-in duration-500 max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
             <PageHeader
@@ -241,12 +250,12 @@ const Expenses: React.FC = () => {
                     <div className="flex items-center justify-between">
                         <h3 className="font-bold text-white uppercase text-xs tracking-wider flex items-center gap-2"><Store size={16} /> Gestão de Fornecedores</h3>
                         <div className="flex items-center gap-2">
-                            {recurringExpenses.length > 0 && (
+                            {recurringStats.pending > 0 && (
                                 <button
                                     onClick={() => {
                                         const range = getDateRangeFilter();
                                         const monthStr = `${range.start.getFullYear()}-${(range.start.getMonth() + 1).toString().padStart(2, '0')}`;
-                                        if (window.confirm(`Marcar todas as ${recurringExpenses.length} despesas recorrentes como pagas para ${range.start.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}?`)) {
+                                        if (window.confirm(`Marcar todas as ${recurringStats.pending} despesas pendentes como pagas para ${range.start.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}?`)) {
                                             recurringExpenses.forEach(exp => {
                                                 bulkMarkExpenseAsPaid(exp.id, [monthStr]);
                                             });
@@ -254,12 +263,34 @@ const Expenses: React.FC = () => {
                                     }}
                                     className="text-xs font-bold bg-brand/10 text-brand hover:bg-brand/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
                                 >
-                                    <CheckCircle2 size={14} /> Pagar Todas
+                                    <CheckCircle2 size={14} /> Pagar Todas ({recurringStats.pending})
                                 </button>
                             )}
-                            <span className="text-xs bg-white/5 px-2 py-1 rounded text-ink-dim font-mono">{recurringExpenses.length}</span>
                         </div>
                     </div>
+
+                    {/* Monthly Progress Bar */}
+                    {recurringStats.total > 0 && (
+                        <div className="bg-base-card rounded-xl p-4 border border-white/5">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs font-medium text-ink-gray">Progresso do mês</span>
+                                    <div className="flex items-center gap-2 text-xs">
+                                        <span className="flex items-center gap-1 text-brand"><CheckCircle2 size={12} /> {recurringStats.paid}</span>
+                                        <span className="text-ink-dim">|</span>
+                                        <span className="flex items-center gap-1 text-semantic-yellow"><Clock size={12} /> {recurringStats.pending}</span>
+                                    </div>
+                                </div>
+                                <span className="text-sm font-bold text-white">{Math.round(recurringStats.percent)}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full bg-brand transition-all duration-500" 
+                                    style={{ width: `${recurringStats.percent}%` }} 
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     <div className="space-y-3">
                         {sortedRecurring.length > 0 ? (
@@ -280,13 +311,17 @@ const Expenses: React.FC = () => {
 
                                             {/* Col 1: Identity */}
                                             <div className="flex items-center gap-4">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isTrialActive ? 'bg-semantic-yellow text-black' : 'bg-white/5 text-ink-gray group-hover:text-white transition-colors'}`}>
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isTrialActive ? (daysLeft <= 3 ? 'bg-semantic-red animate-pulse' : 'bg-semantic-yellow') + ' text-black' : 'bg-white/5 text-ink-gray group-hover:text-white transition-colors'}`}>
                                                     {isTrialActive ? <Zap size={20} fill="black" /> : <IconMapper name={iconName} size={20} />}
                                                 </div>
                                                 <div className="min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <h4 className="font-bold text-white text-sm truncate">{exp.title}</h4>
-                                                        {isTrialActive && <span className="text-[9px] font-black bg-black/20 px-1.5 rounded uppercase">Trial ({daysLeft}d)</span>}
+                                                        {isTrialActive && (
+                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${daysLeft <= 3 ? 'bg-semantic-red text-white' : 'bg-semantic-yellow/20 text-semantic-yellow'}`}>
+                                                                {daysLeft <= 0 ? 'Trial expirado!' : daysLeft === 1 ? 'Expira amanhã!' : `${daysLeft} dias restantes`}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <p className="text-xs text-ink-gray truncate">{exp.category}</p>
                                                 </div>
@@ -300,34 +335,35 @@ const Expenses: React.FC = () => {
                                                 <p className="text-xs md:text-[10px] text-ink-dim uppercase">Dia {exp.dueDay || '?'}</p>
                                             </div>
 
-                                            {/* Col 3: Actions (Grid for spacing) */}
+                                            {/* Col 3: Actions */}
                                             <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        toggleExpensePayment(exp.id, getDateRangeFilter().start);
-                                                    }}
-                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isPaid ? 'bg-brand/10 text-brand hover:bg-brand/20' : 'bg-white/5 text-ink-dim hover:bg-white/10 hover:text-white'}`}
-                                                    title={isPaid ? "Marcar como pendente" : "Marcar como pago"}
-                                                >
-                                                    {isTrialActive ? (
-                                                        <AlertTriangle size={18} className="text-semantic-yellow" />
-                                                    ) : isPaid ? (
-                                                        <CheckCircle2 size={20} />
-                                                    ) : (
-                                                        <div className="w-4 h-4 rounded-full border-2 border-white/20 group-hover:border-white/50"></div>
-                                                    )}
-                                                </button>
-
-                                                {/* Separation Line */}
-                                                <div className="w-px h-8 bg-white/5 mx-1"></div>
+                                                {!isTrialActive && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleExpensePayment(exp.id, getDateRangeFilter().start);
+                                                        }}
+                                                        className={`h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all ${isPaid ? 'bg-brand/10 text-brand hover:bg-brand/20' : 'bg-semantic-yellow/10 text-semantic-yellow hover:bg-semantic-yellow/20'}`}
+                                                    >
+                                                        {isPaid ? (
+                                                            <><CheckCircle2 size={14} /> <span className="hidden sm:inline">Pago</span></>
+                                                        ) : (
+                                                            <><Clock size={14} /> <span className="hidden sm:inline">Pagar</span></>
+                                                        )}
+                                                    </button>
+                                                )}
+                                                {isTrialActive && (
+                                                    <div className="h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold bg-semantic-yellow/10 text-semantic-yellow">
+                                                        <Zap size={14} /> Trial
+                                                    </div>
+                                                )}
 
                                                 <button
                                                     onClick={(e) => handleDeleteClick(e, exp.id)}
-                                                    className="w-10 h-10 rounded-full flex items-center justify-center text-ink-dim hover:text-semantic-red hover:bg-semantic-red/10 transition-colors z-10"
+                                                    className="w-9 h-9 rounded-xl flex items-center justify-center text-ink-dim hover:text-semantic-red hover:bg-semantic-red/10 transition-colors"
                                                     title="Excluir"
                                                 >
-                                                    <Trash2 size={18} />
+                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         </div>
