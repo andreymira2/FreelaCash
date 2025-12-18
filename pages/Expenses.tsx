@@ -24,7 +24,7 @@ interface ExpenseFormState {
 }
 
 const Expenses: React.FC = () => {
-    const { expenses, addExpense, deleteExpense, toggleExpensePayment, settings, convertCurrency, dateRange, setDateRange, getDateRangeFilter, getFutureRecurringIncome } = useData();
+    const { expenses, addExpense, deleteExpense, toggleExpensePayment, bulkMarkExpenseAsPaid, settings, convertCurrency, dateRange, setDateRange, getDateRangeFilter, getFutureRecurringIncome } = useData();
     const navigate = useNavigate();
     const [showForm, setShowForm] = useState(false);
     const [formError, setFormError] = useState<string>('');
@@ -239,8 +239,26 @@ const Expenses: React.FC = () => {
                 {/* LEFT: Vendor Management (Recurring) */}
                 <div className="lg:col-span-2 space-y-4">
                     <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-white uppercase text-xs tracking-wider flex items-center gap-2"><Store size={14} /> Gestão de Fornecedores</h3>
-                        <span className="text-xs md:text-[10px] bg-white/5 px-2 py-1 rounded text-ink-dim font-mono">{recurringExpenses.length}</span>
+                        <h3 className="font-bold text-white uppercase text-xs tracking-wider flex items-center gap-2"><Store size={16} /> Gestão de Fornecedores</h3>
+                        <div className="flex items-center gap-2">
+                            {recurringExpenses.length > 0 && (
+                                <button
+                                    onClick={() => {
+                                        const range = getDateRangeFilter();
+                                        const monthStr = `${range.start.getFullYear()}-${(range.start.getMonth() + 1).toString().padStart(2, '0')}`;
+                                        if (window.confirm(`Marcar todas as ${recurringExpenses.length} despesas recorrentes como pagas para ${range.start.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}?`)) {
+                                            recurringExpenses.forEach(exp => {
+                                                bulkMarkExpenseAsPaid(exp.id, [monthStr]);
+                                            });
+                                        }
+                                    }}
+                                    className="text-xs font-bold bg-brand/10 text-brand hover:bg-brand/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                                >
+                                    <CheckCircle2 size={14} /> Pagar Todas
+                                </button>
+                            )}
+                            <span className="text-xs bg-white/5 px-2 py-1 rounded text-ink-dim font-mono">{recurringExpenses.length}</span>
+                        </div>
                     </div>
 
                     <div className="space-y-3">

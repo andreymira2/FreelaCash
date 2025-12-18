@@ -10,22 +10,22 @@ export const Badge: React.FC<{ status: ProjectStatus; className?: string }> = ({
         case ProjectStatus.ACTIVE:
             styles = "bg-semantic-blue/10 text-semantic-blue border-semantic-blue/20";
             dotColor = "bg-semantic-blue";
-            label = "Ativo";
+            label = "Em Andamento";
             break;
         case ProjectStatus.COMPLETED:
-            styles = "bg-brand/10 text-brand border-brand/20";
-            dotColor = "bg-brand";
+            styles = "bg-semantic-yellow/10 text-semantic-yellow border-semantic-yellow/20";
+            dotColor = "bg-semantic-yellow";
             label = "Entregue";
             break;
         case ProjectStatus.PAID:
-            styles = "bg-semantic-green/10 text-semantic-green border-semantic-green/20";
-            dotColor = "bg-semantic-green";
-            label = "Pago";
+            styles = "bg-brand/10 text-brand border-brand/20";
+            dotColor = "bg-brand";
+            label = "Finalizado";
             break;
         case ProjectStatus.ONGOING:
             styles = "bg-semantic-purple/10 text-semantic-purple border-semantic-purple/20";
             dotColor = "bg-semantic-purple";
-            label = "Retainer";
+            label = "Recorrente";
             break;
         default:
             return null;

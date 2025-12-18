@@ -4,11 +4,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { Card, Button, Badge, CurrencyDisplay, Input, Avatar, ProgressBar, Toggle, Select } from '../components/ui';
 import { ProjectStatus, ProjectContractType, Payment, PaymentStatus, Client, Currency, CURRENCY_SYMBOLS } from '../types';
-import { ArrowLeft, Clock, Trash2, DollarSign, X, Briefcase, Edit2, User, Phone, Mail, Plus, Link2, CalendarClock, CheckCircle2, Circle, FileText, Calendar, ShieldCheck, MessageCircle, FileCheck, Globe, Printer } from 'lucide-react';
+import { ArrowLeft, Clock, Trash2, DollarSign, X, Briefcase, Edit2, User, Phone, Mail, Plus, Link2, CalendarClock, CheckCircle2, Circle, FileText, Calendar, ShieldCheck, MessageCircle, FileCheck, Globe, Printer, Copy } from 'lucide-react';
 
 const ProjectDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { projects, clients, expenses, userProfile, addWorkLog, updateProject, getProjectTotal, deleteProject, addPayment, updatePayment, deletePayment, addProjectAdjustment, updateClient, addClient } = useData();
+    const { projects, clients, expenses, userProfile, addWorkLog, updateProject, getProjectTotal, deleteProject, duplicateProject, addPayment, updatePayment, deletePayment, addProjectAdjustment, updateClient, addClient } = useData();
     const navigate = useNavigate();
 
     const project = projects.find(p => p.id === id);
@@ -116,6 +116,13 @@ const ProjectDetails: React.FC = () => {
 
     const handleDelete = () => { if (window.confirm("Deletar este projeto?")) { deleteProject(project.id); navigate('/projects', { replace: true }); } };
 
+    const handleDuplicate = () => {
+        const newId = duplicateProject(project.id);
+        if (newId) {
+            navigate(`/project/${newId}`);
+        }
+    };
+
     const PaymentHistoryList = () => {
         const list = [...(project.payments || [])].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         return (
@@ -191,7 +198,11 @@ const ProjectDetails: React.FC = () => {
                 </Card>
                 <Card>
                     <h3 className="font-bold text-white mb-4 flex items-center gap-2"><Briefcase size={18} className="text-brand" /> Ações</h3>
-                    <div className="space-y-2"><Button variant="ghost" className="w-full justify-between text-ink-gray hover:text-white bg-white/5" onClick={() => setActiveTab('FINANCIALS')}><span>Financeiro</span> <DollarSign size={14} /></Button><Button variant="ghost" className="w-full justify-between text-ink-gray hover:text-white bg-white/5" onClick={handleWhatsAppBilling}><span>Cobrar no Zap</span> <MessageCircle size={14} className="text-semantic-green" /></Button></div>
+                    <div className="space-y-2">
+                        <Button variant="ghost" className="w-full justify-between text-ink-gray hover:text-white bg-white/5" onClick={() => setActiveTab('FINANCIALS')}><span>Financeiro</span> <DollarSign size={14} /></Button>
+                        <Button variant="ghost" className="w-full justify-between text-ink-gray hover:text-white bg-white/5" onClick={handleWhatsAppBilling}><span>Cobrar no Zap</span> <MessageCircle size={14} className="text-semantic-green" /></Button>
+                        <Button variant="ghost" className="w-full justify-between text-ink-gray hover:text-white bg-white/5" onClick={handleDuplicate}><span>Duplicar Projeto</span> <Copy size={14} /></Button>
+                    </div>
                 </Card>
             </div>
         </div>

@@ -20,6 +20,7 @@ interface DataContextType {
   addProject: (project: Project) => void;
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
+  duplicateProject: (id: string) => string | null;
 
   // Logs & Payments
   addWorkLog: (projectId: string, log: WorkLog) => void;
@@ -191,6 +192,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       projects: prev.projects.filter(p => p.id !== id)
     }));
   }, []);
+
+  const duplicateProject = useCallback((id: string): string | null => {
+    const original = data.projects.find(p => p.id === id);
+    if (!original) return null;
+    const newId = Date.now().toString();
+    const duplicated: Project = {
+      ...original,
+      id: newId,
+      createdAt: Date.now(),
+      startDate: new Date().toISOString(),
+      dueDate: undefined,
+      payments: [],
+      logs: [],
+      adjustments: [],
+      events: [],
+      checklist: original.checklist?.map(t => ({ ...t, id: Date.now().toString() + Math.random(), completed: false })),
+      status: ProjectStatus.ACTIVE,
+    };
+    setData(prev => ({ ...prev, projects: [duplicated, ...prev.projects] }));
+    return newId;
+  }, [data.projects]);
 
   // Components
   const addWorkLog = useCallback((projectId: string, log: WorkLog) => {
@@ -613,7 +635,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       dateRange,
       setDateRange,
       addClient, updateClient,
-      addProject, updateProject, deleteProject,
+      addProject, updateProject, deleteProject, duplicateProject,
       addWorkLog, deleteWorkLog,
       addPayment, updatePayment, deletePayment,
       addProjectAdjustment,

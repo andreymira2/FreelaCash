@@ -26,24 +26,41 @@ const Projects: React.FC = () => {
 
             {/* Filter Bar */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                {(['ALL', ProjectStatus.ACTIVE, ProjectStatus.ONGOING, ProjectStatus.COMPLETED, ProjectStatus.PAID] as const).map((status) => (
-                    <Button
-                        key={status}
-                        variant="ghost"
-                        onClick={() => setStatusFilter(status)}
-                        className={`px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all border min-h-[40px]
-                ${statusFilter === status
-                                ? 'bg-white text-black border-white'
-                                : 'bg-base-card border-base-border text-ink-gray hover:text-white hover:border-white/30'}
-                `}
-                    >
-                        {status === 'ALL' ? 'Todos' : status}
-                    </Button>
-                ))}
+                {(['ALL', ProjectStatus.ACTIVE, ProjectStatus.ONGOING, ProjectStatus.COMPLETED, ProjectStatus.PAID] as const).map((status) => {
+                    const getLabel = (s: typeof status) => {
+                        switch (s) {
+                            case 'ALL': return 'Todos';
+                            case ProjectStatus.ACTIVE: return 'Em Andamento';
+                            case ProjectStatus.ONGOING: return 'Recorrente';
+                            case ProjectStatus.COMPLETED: return 'Entregue';
+                            case ProjectStatus.PAID: return 'Finalizado';
+                            default: return s;
+                        }
+                    };
+                    return (
+                        <Button
+                            key={status}
+                            variant="ghost"
+                            onClick={() => setStatusFilter(status)}
+                            className={`px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all border min-h-[40px]
+                    ${statusFilter === status
+                                    ? 'bg-white text-black border-white'
+                                    : 'bg-base-card border-base-border text-ink-gray hover:text-white hover:border-white/30'}
+                    `}
+                        >
+                            {getLabel(status)}
+                        </Button>
+                    );
+                })}
             </div>
 
             {projects.length === 0 ? (
-                <EmptyState title="Portfólio Vazio" description="Adicione seu primeiro projeto." action={<Button onClick={() => navigate('/add')}>Criar</Button>} />
+                <EmptyState 
+                    title="Seu Portfólio está Vazio" 
+                    description="Comece registrando um projeto para acompanhar seus ganhos e clientes." 
+                    tip="Dica: Registre seu último freela para ver o poder do FreelaCash em ação!"
+                    action={<Button variant="primary" onClick={() => navigate('/add')} className="px-6">Criar Primeiro Projeto</Button>} 
+                />
             ) : (
                 <div className="space-y-3">
                     {filteredProjects.length > 0 ? (

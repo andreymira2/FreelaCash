@@ -320,7 +320,11 @@ const Dashboard: React.FC = () => {
                                 ))}
                             </div>
                         ) : (
-                            <EmptyState title="Tudo calmo" description="Nenhuma atividade recente registrada." />
+                            <EmptyState 
+                                title="Tudo Calmo por Aqui" 
+                                description="Nenhuma atividade recente registrada." 
+                                tip="Adicione um projeto ou registre uma despesa para começar a ver seu fluxo financeiro."
+                            />
                         )}
                     </div>
                 </div>
