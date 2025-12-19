@@ -1,0 +1,66 @@
+Contexto
+Esta é a dashboard atual do FreelaCash.
+ Ela já possui todos os componentes necessários e não deve ter sua estrutura funcional alterada sem justificativa clara.
+O objetivo é avaliar a usabilidade da dashboard, identificar problemas de leitura, hierarquia e clareza, e propor melhorias que tornem a experiência mais intuitiva e eficiente.
+
+Situação atual da dashboard
+A dashboard exibe simultaneamente:
+indicadores financeiros (meta mensal, despesas, lucro, receita recorrente)
+
+estado geral (saúde financeira)
+
+informações operacionais (a receber, vencimentos)
+
+listas dinâmicas (atividade recente, projetos em andamento)
+
+ações rápidas (novo projeto, lançar despesa, clientes, relatórios)
+
+Todos esses elementos são relevantes, porém atualmente competem entre si pelo mesmo nível de atenção, exigindo que o usuário interprete manualmente o que é mais importante no momento.
+
+Problema 1 — Falta de hierarquia clara de informação
+A dashboard não deixa explícito:
+o que representa apenas contexto
+
+o que indica um problema
+
+o que exige ação imediata
+
+O usuário precisa analisar vários blocos antes de entender sua situação atual, o que reduz a eficiência da dashboard como ponto de entrada do sistema.
+
+Problema 2 — Atividade Recente excessiva e confusa
+O bloco de Atividade Recente apresenta:
+uma lista longa
+
+eventos de meses diferentes misturados
+
+ausência de um recorte temporal claro
+
+crescimento vertical contínuo
+
+Isso dificulta identificar rapidamente o que é realmente recente e relevante, transformando o componente em um histórico bruto em vez de um resumo útil.
+
+Problema 3 — Leitura temporal exige esforço do usuário
+Atualmente, a relevância de um item depende da leitura de datas individuais.
+ O sistema não deixa claro, de forma imediata, se algo aconteceu agora, recentemente ou há muito tempo.
+Isso gera esforço cognitivo desnecessário em um contexto que deveria ser de leitura rápida.
+
+Problema 4 — Informações importantes pouco orientadas à ação
+Alguns blocos indicam estados críticos ou de atenção (como saúde financeira baixa ou valores a receber), mas não ajudam o usuário a entender rapidamente:
+o impacto real disso
+
+a prioridade em relação a outros blocos da tela
+
+A dashboard informa, mas não orienta.
+
+Problema 5 — Listas operacionais com pouco contexto
+Blocos como Projetos em Andamento exibem valores e progresso, mas não comunicam claramente:
+se a situação é positiva ou negativa
+
+se há urgência
+
+se algo está parado ou fluindo normalmente
+
+O usuário precisa interpretar manualmente esses dados.
+
+Objetivo
+Com base nesses pontos, o objetivo é que sejam propostas melhorias de UX e organização da dashboard, mantendo suas funcionalidades, mas reduzindo esforço cognitivo, melhorando hierarquia de informação e tornando a leitura mais clara e imediata.
