@@ -13,6 +13,7 @@ import {
     useRecentActivity, 
     useActiveProjectFinancials
 } from '../hooks/useFinancialEngine';
+import { parseLocalDateToISO, parseNumber, toInputDate } from '../utils/format';
 
 const getRelativeTime = (date: Date): string => {
     const now = new Date();
@@ -46,7 +47,7 @@ const Dashboard: React.FC = () => {
     const [showQuickPay, setShowQuickPay] = useState(false);
     const [quickPayProjectId, setQuickPayProjectId] = useState('');
     const [quickPayAmount, setQuickPayAmount] = useState('');
-    const [quickPayDate, setQuickPayDate] = useState(new Date().toISOString().split('T')[0]);
+    const [quickPayDate, setQuickPayDate] = useState(toInputDate(new Date().toISOString()));
 
     const currentSnapshot = useFinancialSnapshot();
     const healthScore = useHealthScore();
@@ -129,8 +130,8 @@ const Dashboard: React.FC = () => {
         if (!quickPayProjectId || !quickPayAmount) return;
         addPayment(quickPayProjectId, {
             id: Date.now().toString(),
-            date: new Date(quickPayDate).toISOString(),
-            amount: parseFloat(quickPayAmount),
+            date: parseLocalDateToISO(quickPayDate),
+            amount: parseNumber(quickPayAmount),
             note: 'Entrada Rápida via Dashboard',
             status: PaymentStatus.PAID
         });

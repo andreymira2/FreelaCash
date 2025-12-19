@@ -6,6 +6,7 @@ import { Card, Button, Input, Select, CurrencyDisplay, Toggle } from '../compone
 import { Currency, EXPENSE_CATEGORIES, CATEGORY_ICONS } from '../types';
 import { ArrowLeft, Trash2, Edit2, Calendar, CheckCircle2, XCircle, Zap, DollarSign, ChevronDown, Check, AlertTriangle, Clock } from 'lucide-react';
 import * as Icons from 'lucide-react';
+import { parseLocalDateToISO, toInputDate, parseNumber } from '../utils/format';
 
 const IconMapper: React.FC<{ name: string; size?: number; className?: string }> = ({ name, size = 16, className = '' }) => {
     // @ts-ignore
@@ -22,12 +23,11 @@ const ExpenseDetails: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [expandedYear, setExpandedYear] = useState<number>(new Date().getFullYear());
 
-    // Form State
     const [formData, setFormData] = useState({
         title: expense?.title || '', amount: expense?.amount || 0, currency: expense?.currency || Currency.BRL,
-        category: expense?.category || 'Outros', date: expense?.date ? expense.date.split('T')[0] : '',
+        category: expense?.category || 'Outros', date: expense?.date ? toInputDate(expense.date) : '',
         isRecurring: expense?.isRecurring || false, recurringFrequency: expense?.recurringFrequency || 'MONTHLY',
-        dueDay: expense?.dueDay || '', isTrial: expense?.isTrial || false, trialEndDate: expense?.trialEndDate ? expense.trialEndDate.split('T')[0] : '',
+        dueDay: expense?.dueDay || '', isTrial: expense?.isTrial || false, trialEndDate: expense?.trialEndDate ? toInputDate(expense.trialEndDate) : '',
     });
 
     if (!expense) return <div className="p-8 text-center text-ink-gray">Despesa não encontrada.</div>;
@@ -123,12 +123,11 @@ const ExpenseDetails: React.FC = () => {
     }, [expense]);
 
 
-    // Actions
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         updateExpense(expense.id, {
-            ...formData, date: new Date(formData.date).toISOString(), amount: Number(formData.amount),
-            trialEndDate: formData.isTrial ? new Date(formData.trialEndDate).toISOString() : undefined, dueDay: Number(formData.dueDay)
+            ...formData, date: parseLocalDateToISO(formData.date), amount: parseNumber(String(formData.amount)),
+            trialEndDate: formData.isTrial ? parseLocalDateToISO(formData.trialEndDate) : undefined, dueDay: Number(formData.dueDay)
         });
         setIsEditing(false);
     };

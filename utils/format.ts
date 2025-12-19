@@ -20,6 +20,41 @@ export const parseLocalDate = (dateStr: string): Date => {
 };
 
 /**
+ * Parses a "YYYY-MM-DD" string and returns an ISO string.
+ * Use this when you need to store the date as a string.
+ */
+export const parseLocalDateToISO = (dateStr: string): string => {
+    return parseLocalDate(dateStr).toISOString();
+};
+
+/**
+ * Converts an ISO date string to "YYYY-MM-DD" format for HTML date inputs.
+ * Uses string extraction to preserve the original date without timezone shifts.
+ * This is backwards-compatible with legacy dates saved at UTC midnight.
+ */
+export const toInputDate = (isoString: string | undefined): string => {
+    if (!isoString) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    return isoString.substring(0, 10);
+};
+
+/**
+ * Parses a number string, accepting both comma and dot as decimal separators.
+ * Returns 0 for invalid inputs.
+ */
+export const parseNumber = (value: string): number => {
+    if (!value) return 0;
+    const normalized = value.replace(',', '.');
+    const parsed = parseFloat(normalized);
+    return isNaN(parsed) ? 0 : parsed;
+};
+
+/**
  * Formats a currency amount consistently.
  */
 export const formatCurrency = (amount: number, currency: Currency): string => {

@@ -5,6 +5,7 @@ import { useData } from '../context/DataContext';
 import { Button, Input, Select, Card } from '../components/ui';
 import { Currency, ProjectType, ProjectStatus, ProjectContractType } from '../types';
 import { ArrowLeft, AlertCircle, CheckCircle2, Zap, Calendar, Clock, Briefcase, DollarSign } from 'lucide-react';
+import { parseLocalDateToISO, parseNumber, toInputDate } from '../utils/format';
 
 const ProjectForm: React.FC = () => {
     const navigate = useNavigate();
@@ -25,7 +26,7 @@ const ProjectForm: React.FC = () => {
         currency: Currency.BRL,
         platformFee: '',
         dueDate: '',
-        startDate: new Date().toISOString().split('T')[0],
+        startDate: toInputDate(new Date().toISOString()),
         contractMonths: '6',
         isOngoing: true,
         estimatedHours: ''
@@ -40,27 +41,26 @@ const ProjectForm: React.FC = () => {
             return;
         }
 
-        const rateVal = parseFloat(formData.rate);
-        if (isNaN(rateVal) || rateVal < 0) {
+        const rateVal = parseNumber(formData.rate);
+        if (rateVal < 0) {
             setError('Valor inválido');
             return;
         }
 
-        const feeVal = formData.platformFee ? parseFloat(formData.platformFee) : 0;
+        const feeVal = formData.platformFee ? parseNumber(formData.platformFee) : 0;
         if (feeVal < 0 || feeVal > 100) {
             setError('A taxa deve ser entre 0-100%');
             return;
         }
 
-        // Logic for End Dates based on contract type
         let contractEndDate: string | undefined = undefined;
         if (formData.contractType === ProjectContractType.RECURRING_FIXED) {
-            const start = new Date(formData.startDate);
+            const start = new Date(`${formData.startDate}T12:00:00`);
             const months = parseInt(formData.contractMonths) || 6;
             start.setMonth(start.getMonth() + months);
             contractEndDate = start.toISOString();
         } else if (formData.contractType === ProjectContractType.ONE_OFF) {
-            contractEndDate = formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined;
+            contractEndDate = formData.dueDate ? parseLocalDateToISO(formData.dueDate) : undefined;
         }
 
         const initialStatus = formData.contractType === ProjectContractType.ONE_OFF ? ProjectStatus.ACTIVE : ProjectStatus.ONGOING;
@@ -77,10 +77,10 @@ const ProjectForm: React.FC = () => {
             rate: rateVal,
             currency: formData.currency,
             platformFee: feeVal,
-            startDate: new Date(formData.startDate).toISOString(),
-            dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
+            startDate: parseLocalDateToISO(formData.startDate),
+            dueDate: formData.dueDate ? parseLocalDateToISO(formData.dueDate) : undefined,
             contractEndDate: contractEndDate,
-            estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : undefined,
+            estimatedHours: formData.estimatedHours ? parseNumber(formData.estimatedHours) : undefined,
             payments: [],
             events: [
                 { id: Date.now().toString(), date: new Date().toISOString(), title: 'Projeto Criado', type: 'SYSTEM' }

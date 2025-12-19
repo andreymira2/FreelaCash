@@ -5,6 +5,7 @@ import { Card, Button, Badge, CurrencyDisplay, Input, Avatar, ProgressBar, Selec
 import { ProjectStatus, ProjectContractType, Payment, PaymentStatus, Client, Currency, CURRENCY_SYMBOLS } from '../types';
 import { ArrowLeft, Clock, Trash2, DollarSign, Edit2, User, Plus, CheckCircle2, Circle, FileText, Calendar, ShieldCheck, MessageCircle, Copy, ChevronDown, ChevronUp, Settings } from 'lucide-react';
 import { useProjectFinancials } from '../hooks/useFinancialEngine';
+import { parseLocalDateToISO, parseNumber, toInputDate } from '../utils/format';
 
 const ProjectDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -24,7 +25,7 @@ const ProjectDetails: React.FC = () => {
     const [showTimer, setShowTimer] = useState(false);
     
     const [installmentCount, setInstallmentCount] = useState(2);
-    const [installmentDate, setInstallmentDate] = useState(new Date().toISOString().split('T')[0]);
+    const [installmentDate, setInstallmentDate] = useState(toInputDate(new Date().toISOString()));
     const [payFirstNow, setPayFirstNow] = useState(true);
 
     const [desc, setDesc] = useState('');
@@ -33,7 +34,7 @@ const ProjectDetails: React.FC = () => {
 
     const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
     const [paymentAmount, setPaymentAmount] = useState('');
-    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+    const [paymentDate, setPaymentDate] = useState(toInputDate(new Date().toISOString()));
     const [paymentNote, setPaymentNote] = useState('');
     const [paymentInvoice, setPaymentInvoice] = useState('');
     const [isAdjustment, setIsAdjustment] = useState(false);
@@ -80,9 +81,9 @@ const ProjectDetails: React.FC = () => {
 
     const handlePaymentSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const amount = parseFloat(paymentAmount);
-        if (isNaN(amount) || amount <= 0) return;
-        const dateStr = new Date(paymentDate).toISOString();
+        const amount = parseNumber(paymentAmount);
+        if (amount <= 0) return;
+        const dateStr = parseLocalDateToISO(paymentDate);
 
         if (editingPaymentId) {
             const existingPay = project.payments?.find(p => p.id === editingPaymentId);
@@ -96,13 +97,13 @@ const ProjectDetails: React.FC = () => {
         resetPaymentForm();
     };
 
-    const resetPaymentForm = () => { setEditingPaymentId(null); setPaymentAmount(''); setPaymentNote(''); setPaymentInvoice(''); setPaymentDate(new Date().toISOString().split('T')[0]); setIsAdjustment(false); setAdjustmentDesc(''); };
+    const resetPaymentForm = () => { setEditingPaymentId(null); setPaymentAmount(''); setPaymentNote(''); setPaymentInvoice(''); setPaymentDate(toInputDate(new Date().toISOString())); setIsAdjustment(false); setAdjustmentDesc(''); };
     
     const openPaymentModal = (paymentToEdit?: Payment) => {
         if (paymentToEdit) { 
             setEditingPaymentId(paymentToEdit.id); 
             setPaymentAmount(paymentToEdit.amount.toString()); 
-            setPaymentDate(new Date(paymentToEdit.date).toISOString().split('T')[0]); 
+            setPaymentDate(toInputDate(paymentToEdit.date)); 
             setPaymentNote(paymentToEdit.note || ''); 
             setPaymentInvoice(paymentToEdit.invoiceNumber || ''); 
             setIsAdjustment(false); 
@@ -131,7 +132,7 @@ const ProjectDetails: React.FC = () => {
         if (installmentCount < 2 || totals.remaining <= 0) return;
         const amountPerPart = totals.remaining / installmentCount;
         for (let i = 0; i < installmentCount; i++) {
-            const d = new Date(installmentDate); 
+            const d = new Date(`${installmentDate}T12:00:00`); 
             d.setMonth(d.getMonth() + i);
             const isFirst = i === 0;
             addPayment(project.id, { 

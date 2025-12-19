@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { Card, Button, Input, Select, CurrencyDisplay, Toggle, DateRangeSelect, EmptyState, PageHeader } from '../components/ui';
 import { Currency, EXPENSE_CATEGORIES, SERVICE_PRESETS, CATEGORY_ICONS, ServicePreset, Expense } from '../types';
-import { safeFloat, parseLocalDate } from '../utils/format';
+import { safeFloat, parseLocalDate, toInputDate } from '../utils/format';
 import { Plus, Trash2, Wallet, X, HelpCircle, CheckCircle2, Clock, AlertTriangle, Zap, Receipt, Store, Search } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -35,7 +35,7 @@ const Expenses: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const defaultForm: ExpenseFormState = {
-        title: '', amount: '', currency: settings.mainCurrency, category: EXPENSE_CATEGORIES[1], date: new Date().toISOString().split('T')[0], tags: [], isWorkRelated: true, isRecurring: false, recurringFrequency: 'MONTHLY', status: 'PAID', dueDay: '',
+        title: '', amount: '', currency: settings.mainCurrency, category: EXPENSE_CATEGORIES[1], date: toInputDate(new Date().toISOString()), tags: [], isWorkRelated: true, isRecurring: false, recurringFrequency: 'MONTHLY', status: 'PAID', dueDay: '',
         isTrial: false, trialEndDate: ''
     };
     const [formData, setFormData] = useState<ExpenseFormState>(defaultForm);
