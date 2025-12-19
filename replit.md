@@ -89,6 +89,15 @@ FreelaCash is a financial management platform designed for freelancers, creative
 - **Deprecated legacy `getProjectTotal`** in DataContext (kept for backward compatibility)
 - **Type definitions** (`engine/types.ts`): Strong typing for all financial structures (ProjectTotals, ReceivablePayment, ExpenseReminder, HealthScore, TimelineEvent, etc.)
 
+### Phase 11: Dashboard Simplification (December 2024)
+- **Hierarchical structure**: 3 levels - Alert Banner (urgências), Card Principal (visão geral), Operacional (projetos/atividade)
+- **Alert Banner contextual**: Aparece apenas quando há pagamentos atrasados, contas vencendo hoje, ou saúde financeira crítica
+- **Card consolidado**: Meta mensal, despesas, lucro, próximo recebimento e próxima conta em um único bloco
+- **Atividade limitada**: Últimos 7 dias apenas, máximo 5 itens por grupo
+- **Projetos com status visual**: Indicadores coloridos (Fluindo/Parado/Atrasado) baseados em atividade e pagamentos
+- **Tags temporais relativas**: "Hoje", "Ontem", "X dias atrás" ao invés de datas absolutas
+- **Quick actions mobile-only**: Removido grid de 4 botões do desktop, mantido apenas barra compacta no mobile
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
