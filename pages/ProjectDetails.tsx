@@ -2,8 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { Card, Button, Badge, CurrencyDisplay, Input, Avatar, ProgressBar, Select } from '../components/ui';
+import BillingModal from '../components/BillingModal';
+import PaymentGrid from '../components/PaymentGrid';
 import { ProjectStatus, ProjectContractType, Payment, PaymentStatus, Client, Currency, CURRENCY_SYMBOLS } from '../types';
-import { ArrowLeft, Clock, Trash2, DollarSign, Edit2, User, Plus, CheckCircle2, Circle, FileText, Calendar, ShieldCheck, MessageCircle, Copy, Settings } from 'lucide-react';
+import { ArrowLeft, Clock, Trash2, DollarSign, Edit2, User, Plus, CheckCircle2, Circle, FileText, Calendar, ShieldCheck, Settings, Send, Copy } from 'lucide-react';
 import { useProjectFinancials } from '../hooks/useFinancialEngine';
 import { parseLocalDateToISO, parseNumber, toInputDate } from '../utils/format';
 
@@ -22,6 +24,7 @@ const ProjectDetails: React.FC = () => {
     const [showInstallmentModal, setShowInstallmentModal] = useState(false);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [selectedReceiptPayment, setSelectedReceiptPayment] = useState<Payment | null>(null);
+    const [showBillingModal, setShowBillingModal] = useState(false);
     
     const [installmentCount, setInstallmentCount] = useState(2);
     const [installmentDate, setInstallmentDate] = useState(toInputDate(new Date().toISOString()));
@@ -60,12 +63,6 @@ const ProjectDetails: React.FC = () => {
 
     if (!project) return <div className="p-8 text-center text-ink-gray">Projeto não encontrado.</div>;
 
-    const handleWhatsAppBilling = () => {
-        if (!userProfile.pixKey) { alert("Configure sua Chave PIX nas Configurações primeiro!"); navigate('/settings'); return; }
-        const symbol = CURRENCY_SYMBOLS[project.currency] || project.currency;
-        const text = `Olá ${project.clientName}, tudo bem? 👋\n\nAqui é o ${userProfile.name}. Segue o resumo do projeto *${project.category}*:\n\nValor Total: ${symbol}${totals.gross.toFixed(2)}\nJá Pago: ${symbol}${totals.paid.toFixed(2)}\n*Valor Pendente: ${symbol}${totals.remaining.toFixed(2)}*\n\nPara regularizar, segue minha chave PIX:\n🔑 *${userProfile.pixKey}*\nNome: ${userProfile.name}\nCPF/CNPJ: ${userProfile.taxId || ''}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-    };
 
     const handlePaymentSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -216,51 +213,28 @@ const ProjectDetails: React.FC = () => {
                 </div>
             )}
 
-            {/* WhatsApp Billing Banner */}
+            {/* Billing Banner */}
             {totals.remaining > 0 && (
-                userProfile.pixKey ? (
-                    <button
-                        onClick={handleWhatsAppBilling}
-                        className="w-full bg-gradient-to-r from-[#25D366] to-[#128C7E] hover:from-[#22c55e] hover:to-[#0d9488] rounded-2xl p-4 flex items-center justify-between gap-4 transition-all shadow-lg shadow-[#25D366]/20 hover:shadow-[#25D366]/30 active:scale-[0.99]"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                                <MessageCircle size={24} className="text-white" />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-white font-bold text-base">Cobrar no WhatsApp</p>
-                                <p className="text-white/80 text-sm">Enviar cobrança via PIX</p>
-                            </div>
+                <button
+                    onClick={() => setShowBillingModal(true)}
+                    className="w-full bg-gradient-to-r from-brand to-brand/80 hover:from-brand/90 hover:to-brand/70 rounded-2xl p-4 flex items-center justify-between gap-4 transition-all shadow-lg shadow-brand/20 hover:shadow-brand/30 active:scale-[0.99]"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-black/20 flex items-center justify-center">
+                            <Send size={24} className="text-black" />
                         </div>
-                        <div className="text-right">
-                            <p className="text-white/70 text-xs font-medium">Valor pendente</p>
-                            <p className="text-white font-extrabold text-lg">
-                                <CurrencyDisplay amount={totals.remaining} currency={project.currency} />
-                            </p>
+                        <div className="text-left">
+                            <p className="text-black font-bold text-base">Cobrar Cliente</p>
+                            <p className="text-black/70 text-sm">WhatsApp, Email ou Copiar</p>
                         </div>
-                    </button>
-                ) : (
-                    <button
-                        onClick={() => navigate('/settings')}
-                        className="w-full bg-gradient-to-r from-[#25D366]/30 to-[#128C7E]/30 border border-[#25D366]/50 rounded-2xl p-4 flex items-center justify-between gap-4 transition-all hover:from-[#25D366]/40 hover:to-[#128C7E]/40"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-[#25D366]/20 flex items-center justify-center">
-                                <MessageCircle size={24} className="text-[#25D366]" />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-white font-bold text-base">Cobrar no WhatsApp</p>
-                                <p className="text-[#25D366] text-sm">Configure sua chave PIX para cobrar</p>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-ink-gray text-xs font-medium">Valor pendente</p>
-                            <p className="text-semantic-yellow font-extrabold text-lg">
-                                <CurrencyDisplay amount={totals.remaining} currency={project.currency} />
-                            </p>
-                        </div>
-                    </button>
-                )
+                    </div>
+                    <div className="text-right">
+                        <p className="text-black/60 text-xs font-medium">Valor pendente</p>
+                        <p className="text-black font-extrabold text-lg">
+                            <CurrencyDisplay amount={totals.remaining} currency={project.currency} />
+                        </p>
+                    </div>
+                </button>
             )}
 
             {/* Main Content - Single Page */}
@@ -277,11 +251,16 @@ const ProjectDetails: React.FC = () => {
                     )}
                 </div>
 
+                {/* Payment Grid - Visual History */}
+                {paymentsList.filter(p => p.status === PaymentStatus.PAID || !p.status).length > 0 && (
+                    <PaymentGrid payments={paymentsList} currency={project.currency} months={6} />
+                )}
+
                 {/* Payment History */}
                 <div>
                     <h3 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
                         <DollarSign size={18} className="text-brand" />
-                        Histórico de Pagamentos
+                        Pagamentos
                     </h3>
                     <div className="space-y-3">
                         {paymentsList.length > 0 ? paymentsList.map(pay => {
@@ -575,6 +554,22 @@ const ProjectDetails: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* Billing Modal */}
+            <BillingModal
+                isOpen={showBillingModal}
+                onClose={() => setShowBillingModal(false)}
+                clientName={project.clientName}
+                projectCategory={project.category}
+                currency={project.currency}
+                grossAmount={totals.gross}
+                paidAmount={totals.paid}
+                remainingAmount={totals.remaining}
+                pixKey={userProfile.pixKey}
+                userName={userProfile.name}
+                taxId={userProfile.taxId}
+                clientEmail={client?.billingEmail}
+            />
         </div>
     );
 };

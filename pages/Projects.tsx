@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from '../context/DataContext';
 import { CurrencyDisplay, Badge, Avatar, Button, EmptyState, PageHeader, Card } from '../components/ui';
+import BillingModal from '../components/BillingModal';
 import { ProjectStatus, ProjectContractType, PaymentStatus, Project, Payment, CURRENCY_SYMBOLS, Currency } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Repeat, Check, MessageCircle, Search, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react';
+import { Plus, Repeat, Check, Send, Search, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react';
 import { useAllProjectFinancials } from '../hooks/useFinancialEngine';
 
 const Projects: React.FC = () => {
@@ -12,6 +13,7 @@ const Projects: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'ALL'>('ALL');
     const [searchQuery, setSearchQuery] = useState('');
     const [showOnlyPending, setShowOnlyPending] = useState(false);
+    const [billingProject, setBillingProject] = useState<{ project: Project; totals: { gross: number; paid: number; remaining: number } } | null>(null);
 
     const projectFinancials = useAllProjectFinancials();
     const financialsMap = useMemo(() => {
@@ -89,13 +91,11 @@ const Projects: React.FC = () => {
         updatePayment(projectId, { ...payment, status: PaymentStatus.PAID, date: new Date().toISOString() });
     }, [updatePayment]);
 
-    const handleWhatsApp = useCallback((e: React.MouseEvent, p: Project, remaining: number, gross: number, paid: number) => {
+    const handleOpenBilling = useCallback((e: React.MouseEvent, p: Project, totals: { gross: number; paid: number; remaining: number }) => {
         e.stopPropagation();
-        if (!userProfile.pixKey || remaining <= 0) return;
-        const symbol = CURRENCY_SYMBOLS[p.currency] || p.currency;
-        const text = `Olá ${p.clientName}, tudo bem? 👋\n\nSegue o resumo do projeto *${p.category}*:\n\nValor Total: ${symbol}${gross.toFixed(2)}\nJá Pago: ${symbol}${paid.toFixed(2)}\n*Valor Pendente: ${symbol}${remaining.toFixed(2)}*\n\nPara regularizar, segue minha chave PIX:\n🔑 *${userProfile.pixKey}*`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-    }, [userProfile.pixKey]);
+        if (totals.remaining <= 0) return;
+        setBillingProject({ project: p, totals });
+    }, []);
 
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 pb-24 animate-in fade-in">
@@ -302,7 +302,7 @@ const Projects: React.FC = () => {
                                         </p>
                                     )}
 
-                                    {(nextScheduledPayment || (total.remaining > 0 && userProfile.pixKey)) && p.status !== ProjectStatus.PAID && (
+                                    {(nextScheduledPayment || total.remaining > 0) && p.status !== ProjectStatus.PAID && (
                                         <div className="flex items-center gap-2 pt-2 border-t border-white/5">
                                             {nextScheduledPayment && (
                                                 <button
@@ -313,12 +313,12 @@ const Projects: React.FC = () => {
                                                     Confirmar <CurrencyDisplay amount={nextScheduledPayment.amount} currency={p.currency} />
                                                 </button>
                                             )}
-                                            {total.remaining > 0 && userProfile.pixKey && (
+                                            {total.remaining > 0 && (
                                                 <button
-                                                    onClick={(e) => handleWhatsApp(e, p, total.remaining, total.gross, total.paid)}
-                                                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-semantic-green/10 text-semantic-green hover:bg-semantic-green/20 transition-all"
+                                                    onClick={(e) => handleOpenBilling(e, p, total)}
+                                                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-brand/10 text-brand hover:bg-brand/20 transition-all"
                                                 >
-                                                    <MessageCircle size={14} />
+                                                    <Send size={14} />
                                                     Cobrar
                                                 </button>
                                             )}
@@ -333,6 +333,23 @@ const Projects: React.FC = () => {
                         <div className="text-center py-20 text-ink-dim">Nenhum projeto encontrado.</div>
                     )}
                 </div>
+            )}
+
+            {/* Billing Modal */}
+            {billingProject && (
+                <BillingModal
+                    isOpen={!!billingProject}
+                    onClose={() => setBillingProject(null)}
+                    clientName={billingProject.project.clientName}
+                    projectCategory={billingProject.project.category}
+                    currency={billingProject.project.currency}
+                    grossAmount={billingProject.totals.gross}
+                    paidAmount={billingProject.totals.paid}
+                    remainingAmount={billingProject.totals.remaining}
+                    pixKey={userProfile.pixKey}
+                    userName={userProfile.name}
+                    taxId={userProfile.taxId}
+                />
             )}
         </div>
     );

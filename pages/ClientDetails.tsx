@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { PageHeader, Card, Avatar, CurrencyDisplay, Badge, Button, EmptyState } from '../components/ui';
+import BillingModal from '../components/BillingModal';
 import { useAllProjectFinancials } from '../hooks/useFinancialEngine';
-import { ArrowLeft, Plus, MessageCircle, DollarSign, Briefcase, TrendingUp, Calendar, Repeat } from 'lucide-react';
+import { ArrowLeft, Plus, Send, DollarSign, Briefcase, TrendingUp, Calendar, Repeat } from 'lucide-react';
 import { ProjectStatus, ProjectContractType, PaymentStatus, CURRENCY_SYMBOLS } from '../types';
 
 const ClientDetails: React.FC = () => {
@@ -62,12 +63,7 @@ const ClientDetails: React.FC = () => {
         return `${years} ano${years > 1 ? 's' : ''} e ${remainingMonths} meses`;
     }, [client]);
 
-    const handleWhatsAppBilling = () => {
-        if (!client || !userProfile.pixKey || stats.totalPending <= 0) return;
-        const symbol = CURRENCY_SYMBOLS[settings.mainCurrency] || 'R$';
-        const message = `Olá ${client.name}! Passando para lembrar sobre o pagamento pendente de ${symbol}${stats.totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.\n\nChave PIX: ${userProfile.pixKey}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-    };
+    const [showBillingModal, setShowBillingModal] = useState(false);
 
     if (!client) {
         return (
@@ -92,9 +88,9 @@ const ClientDetails: React.FC = () => {
                     {relationshipDuration && <p className="text-xs text-ink-dim mt-1">{relationshipDuration}</p>}
                 </div>
                 <div className="flex gap-3">
-                    {stats.totalPending > 0 && userProfile.pixKey && (
-                        <Button variant="primary" onClick={handleWhatsAppBilling} className="h-12 px-6 bg-[#25D366] hover:bg-[#128C7E]">
-                            <MessageCircle size={20} /> Cobrar
+                    {stats.totalPending > 0 && (
+                        <Button variant="primary" onClick={() => setShowBillingModal(true)} className="h-12 px-6">
+                            <Send size={20} /> Cobrar
                         </Button>
                     )}
                     <Button variant="outline" onClick={() => navigate('/add')} className="h-12 px-6">
@@ -234,6 +230,22 @@ const ClientDetails: React.FC = () => {
                     );
                 })()}
             </Card>
+
+            {/* Billing Modal */}
+            <BillingModal
+                isOpen={showBillingModal}
+                onClose={() => setShowBillingModal(false)}
+                clientName={client.name}
+                projectCategory="Todos os projetos"
+                currency={settings.mainCurrency}
+                grossAmount={stats.totalEarned + stats.totalPending}
+                paidAmount={stats.totalEarned}
+                remainingAmount={stats.totalPending}
+                pixKey={userProfile.pixKey}
+                userName={userProfile.name}
+                taxId={userProfile.taxId}
+                clientEmail={client.billingEmail}
+            />
         </div>
     );
 };
