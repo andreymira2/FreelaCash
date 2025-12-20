@@ -4,7 +4,10 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const isProduction = mode === 'production';
+    
     return {
+      base: isProduction ? './' : '/',
       server: {
         port: 5000,
         host: '0.0.0.0',
@@ -18,7 +21,12 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          '@assets': path.resolve(__dirname, 'attached_assets'),
         }
+      },
+      build: {
+        outDir: 'dist',
+        emptyDirBeforeWrite: true,
       }
     };
 });
