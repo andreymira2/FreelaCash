@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import ProjectForm from './pages/ProjectForm';
 import ProjectDetails from './pages/ProjectDetails';
+import ClientDetails from './pages/ClientDetails';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Expenses from './pages/Expenses';
@@ -33,6 +34,7 @@ const App: React.FC = () => {
             <Route path="projects" element={<Projects />} />
             <Route path="add" element={<ProjectForm />} />
             <Route path="project/:id" element={<ProjectDetails />} />
+            <Route path="client/:id" element={<ClientDetails />} />
             <Route path="expenses" element={<Expenses />} />
             <Route path="expenses/:id" element={<ExpenseDetails />} />
             <Route path="reports" element={<Reports />} />

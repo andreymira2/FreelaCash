@@ -46,6 +46,20 @@ export interface Client {
   website?: string;
   notes?: string;
   createdAt: number;
+  
+  // Billing preferences
+  preferredBillingChannel?: 'whatsapp' | 'email' | 'other';
+  billingEmail?: string; // Separate from contact email
+  
+  // Relationship tracking
+  firstProjectDate?: string; // ISO string - when first project started
+  lastActivityDate?: string; // ISO string - last payment or project update
+  
+  // Tags for filtering/grouping
+  tags?: string[];
+  
+  // Archived flag (soft delete for clients with history)
+  isArchived?: boolean;
 }
 
 export interface WorkLog {

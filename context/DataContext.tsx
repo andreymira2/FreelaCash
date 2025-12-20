@@ -15,6 +15,9 @@ interface DataContextType {
   // Clients
   addClient: (client: Client) => void;
   updateClient: (id: string, updates: Partial<Client>) => void;
+  deleteClient: (id: string) => void;
+  getOrCreateClientByName: (name: string) => Client;
+  getClientById: (id: string) => Client | undefined;
 
   // Projects
   addProject: (project: Project) => void;
@@ -121,6 +124,70 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     document.documentElement.classList.add('dark');
   }, []);
 
+  // --- Auto-migration: Link projects to clients ---
+  useEffect(() => {
+    const projectsNeedingMigration = data.projects.filter(p => !p.clientId && p.clientName);
+    
+    if (projectsNeedingMigration.length === 0) return;
+    
+    setData(prev => {
+      const clientMap = new Map<string, Client>();
+      
+      // Build map of existing clients by normalized name
+      prev.clients.forEach(c => {
+        clientMap.set(c.name.toLowerCase().trim(), c);
+      });
+      
+      const newClients: Client[] = [];
+      
+      // Update projects with clientId
+      const updatedProjects = prev.projects.map(project => {
+        if (project.clientId) return project; // Already migrated
+        if (!project.clientName) return project; // No client name to migrate
+        
+        const normalizedName = project.clientName.toLowerCase().trim();
+        
+        let client = clientMap.get(normalizedName);
+        
+        if (!client) {
+          // Create new client
+          client = {
+            id: `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: project.clientName.trim(),
+            createdAt: Date.now(),
+            firstProjectDate: project.startDate
+          };
+          clientMap.set(normalizedName, client);
+          newClients.push(client);
+        }
+        
+        // Update firstProjectDate if this project is older
+        if (client.firstProjectDate && project.startDate < client.firstProjectDate) {
+          client.firstProjectDate = project.startDate;
+        }
+        
+        // Update lastActivityDate based on latest payment
+        const latestPayment = project.payments
+          ?.filter(p => p.status === 'PAID' || !p.status)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        
+        if (latestPayment) {
+          if (!client.lastActivityDate || latestPayment.date > client.lastActivityDate) {
+            client.lastActivityDate = latestPayment.date;
+          }
+        }
+        
+        return { ...project, clientId: client.id };
+      });
+      
+      return {
+        ...prev,
+        projects: updatedProjects,
+        clients: [...prev.clients, ...newClients]
+      };
+    });
+  }, []); // Run once on mount
+
   // --- Date Helpers ---
   const getDateRangeFilter = useCallback(() => {
     const start = new Date();
@@ -172,6 +239,38 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       clients: prev.clients.map(c => c.id === id ? { ...c, ...updates } : c)
     }));
   }, []);
+
+  const deleteClient = useCallback((id: string) => {
+    setData(prev => ({
+      ...prev,
+      clients: prev.clients.filter(c => c.id !== id)
+    }));
+  }, []);
+
+  const getClientById = useCallback((id: string): Client | undefined => {
+    return data.clients.find(c => c.id === id);
+  }, [data.clients]);
+
+  const getOrCreateClientByName = useCallback((name: string): Client => {
+    const trimmedName = name.trim();
+    const normalizedName = trimmedName.toLowerCase();
+    
+    // Try to find existing client by name (case-insensitive)
+    const existing = data.clients.find(c => c.name.toLowerCase() === normalizedName);
+    if (existing) return existing;
+    
+    // Create new client
+    const newClient: Client = {
+      id: `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: trimmedName,
+      createdAt: Date.now()
+    };
+    
+    // Add to state
+    setData(prev => ({ ...prev, clients: [newClient, ...prev.clients] }));
+    
+    return newClient;
+  }, [data.clients]);
 
   // Projects
   const addProject = useCallback((project: Project) => {
@@ -648,7 +747,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userProfile: data.userProfile,
       dateRange,
       setDateRange,
-      addClient, updateClient,
+      addClient, updateClient, deleteClient, getOrCreateClientByName, getClientById,
       addProject, updateProject, deleteProject, duplicateProject,
       addWorkLog, deleteWorkLog,
       addPayment, updatePayment, deletePayment,

@@ -1,0 +1,87 @@
+Contexto
+Esta análise se refere exclusivamente à aba de Projetos do FreelaCash, incluindo a listagem de projetos, a visualização individual de cada projeto e os fluxos de cobrança e acompanhamento de pagamentos.
+A estrutura funcional existente deve ser respeitada. O objetivo não é remover funcionalidades, mas avaliar a experiência de uso, clareza, continuidade e adequação ao comportamento real de freelancers, especialmente aqueles que lidam com projetos recorrentes e clientes fixos.
+
+Situação atual da aba de Projetos
+Atualmente, a aba de Projetos permite:
+visualizar projetos em diferentes estados (em andamento, recorrente, finalizado etc.)
+
+acessar detalhes individuais de cada projeto
+
+registrar pagamentos
+
+acompanhar histórico de pagamentos
+
+realizar cobranças via WhatsApp
+
+configurar dados do projeto e do cliente
+
+Funcionalmente, tudo isso atende ao básico, porém alguns comportamentos da interface não acompanham bem a realidade recorrente e contínua do trabalho freelancer.
+
+Problema 1 — Cobrança tratada como evento pontual
+O botão “Cobrar no WhatsApp” aparece apenas quando existe um valor pendente e desaparece após o pagamento.
+Esse comportamento funciona para projetos pontuais, mas cria fricção em projetos recorrentes ou clientes fixos, onde a cobrança não é um evento isolado, e sim um processo que se repete mensalmente.
+Quando o botão desaparece após o pagamento, o sistema perde continuidade e não reforça a ideia de ciclo financeiro, mesmo em projetos que claramente voltarão a gerar cobrança no mês seguinte.
+
+Problema 2 — Todos os projetos são tratados da mesma forma
+Atualmente, projetos curtos, freelas pontuais, projetos recorrentes e clientes fixos compartilham a mesma estrutura visual e lógica de interação.
+Na prática, esses tipos de projeto possuem pesos, durações e necessidades muito diferentes, mas o sistema não reflete essa diferença em termos de profundidade de informação, prioridade ou fluxo.
+Isso pode fazer com que:
+clientes fixos importantes pareçam sub-representados
+
+projetos pequenos recebam complexidade excessiva
+
+o usuário precise se adaptar ao sistema, em vez do sistema se adaptar ao uso real
+
+
+Problema 3 — Histórico de pagamentos pouco orientado à leitura rápida
+O histórico de pagamentos é tecnicamente correto, mas exige leitura detalhada para entender padrões.
+Para projetos recorrentes, o usuário frequentemente quer responder perguntas simples e rápidas, como:
+esse cliente paga todo mês?
+
+houve atraso recente?
+
+qual é o padrão de pagamento ao longo do tempo?
+
+Atualmente, essas respostas exigem interpretação manual das datas e valores, o que aumenta o esforço cognitivo.
+
+Problema 4 — Abas internas organizadas por dados, não por intenção
+As abas internas do projeto (como “Resumo” e “Configurar”) estão organizadas por tipo de informação, mas o usuário normalmente navega por intenção, por exemplo:
+cobrar um cliente
+
+verificar se está tudo em dia
+
+ajustar um projeto recorrente
+
+acompanhar um relacionamento de longo prazo
+
+Essa diferença entre organização técnica e intenção do usuário pode gerar navegação desnecessária e cliques extras.
+
+Problema 5 — Cobrança limitada a um único canal
+Atualmente, a cobrança automatizada está focada apenas no WhatsApp.
+Na prática, freelancers utilizam múltiplos canais de comunicação com clientes, como:
+email
+
+Instagram
+
+WhatsApp
+
+A limitação a um único canal reduz a flexibilidade do sistema e não reflete totalmente o comportamento real do usuário.
+
+Problema 6 — Clientes fixos não recebem profundidade proporcional à sua importância
+Clientes fixos e recorrentes tendem a:
+sustentar a previsibilidade financeira
+
+reduzir instabilidade
+
+ter relacionamentos de longo prazo
+
+Apesar disso, hoje eles são tratados de forma muito semelhante a projetos comuns, sem uma experiência mais profunda, clara e orientada à continuidade do relacionamento.
+
+Diagnóstico geral
+A aba de Projetos é funcional e bem estruturada, porém ainda opera de forma muito reativa.
+ Ela responde aos eventos conforme eles acontecem, mas poderia acompanhar melhor o usuário em tarefas recorrentes, reduzir esforço repetitivo e reforçar a noção de continuidade no tempo.
+
+Objetivo deste pedido
+Com base nos pontos acima, o objetivo é que sejam sugeridas melhorias de usabilidade, organização e experiência para a aba de Projetos, mantendo as funcionalidades existentes, mas tornando o uso mais fluido, intuitivo e alinhado ao comportamento real de freelancers.
+A IA está livre para propor ideias, abordagens e ajustes que melhorem essa experiência, desde que respeite o contexto apresentado.

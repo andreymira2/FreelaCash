@@ -1,15 +1,17 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from '../context/DataContext';
-import { CurrencyDisplay, Badge, Avatar, Button, EmptyState, PageHeader } from '../components/ui';
-import { ProjectStatus, ProjectContractType, PaymentStatus, Project, Payment, CURRENCY_SYMBOLS } from '../types';
+import { CurrencyDisplay, Badge, Avatar, Button, EmptyState, PageHeader, Card } from '../components/ui';
+import { ProjectStatus, ProjectContractType, PaymentStatus, Project, Payment, CURRENCY_SYMBOLS, Currency } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Repeat, Check, MessageCircle } from 'lucide-react';
+import { Plus, Repeat, Check, MessageCircle, Search, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react';
 import { useAllProjectFinancials } from '../hooks/useFinancialEngine';
 
 const Projects: React.FC = () => {
-    const { projects, updatePayment, userProfile } = useData();
+    const { projects, updatePayment, userProfile, settings } = useData();
     const navigate = useNavigate();
     const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'ALL'>('ALL');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showOnlyPending, setShowOnlyPending] = useState(false);
 
     const projectFinancials = useAllProjectFinancials();
     const financialsMap = useMemo(() => {
@@ -26,9 +28,61 @@ const Projects: React.FC = () => {
         return counts;
     }, [projects]);
 
-    const filteredProjects = useMemo(() => 
-        projects.filter(p => statusFilter === 'ALL' ? true : p.status === statusFilter)
-    , [projects, statusFilter]);
+    const totals = useMemo(() => {
+        let pending = 0;
+        let mrr = 0;
+        let overdueCount = 0;
+        
+        projectFinancials.forEach(pf => {
+            const project = projects.find(p => p.id === pf.projectId);
+            if (!project) return;
+            
+            pending += pf.remaining;
+            
+            const isRetainer = project.contractType === ProjectContractType.RETAINER || 
+                               project.contractType === ProjectContractType.RECURRING_FIXED;
+            if (isRetainer && (project.status === ProjectStatus.ACTIVE || project.status === ProjectStatus.ONGOING)) {
+                mrr += pf.net;
+            }
+            
+            if (pf.isOverdue) overdueCount++;
+        });
+        
+        return { pending, mrr, overdueCount };
+    }, [projectFinancials, projects]);
+
+    const filteredProjects = useMemo(() => {
+        let result = projects;
+        
+        if (statusFilter !== 'ALL') {
+            result = result.filter(p => p.status === statusFilter);
+        }
+        
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(p => 
+                p.clientName.toLowerCase().includes(query) ||
+                p.category.toLowerCase().includes(query)
+            );
+        }
+        
+        if (showOnlyPending) {
+            result = result.filter(p => {
+                const pf = financialsMap[p.id];
+                return pf && (pf.remaining > 0 || pf.isOverdue);
+            });
+        }
+        
+        result = [...result].sort((a, b) => {
+            const aFinancials = financialsMap[a.id];
+            const bFinancials = financialsMap[b.id];
+            if (aFinancials?.isOverdue && !bFinancials?.isOverdue) return -1;
+            if (!aFinancials?.isOverdue && bFinancials?.isOverdue) return 1;
+            return b.createdAt - a.createdAt;
+        });
+        
+        return result;
+    }, [projects, statusFilter, searchQuery, showOnlyPending, financialsMap]);
 
     const handleQuickPay = useCallback((e: React.MouseEvent, projectId: string, payment: Payment) => {
         e.stopPropagation();
@@ -54,6 +108,71 @@ const Projects: React.FC = () => {
                     </Button>
                 }
             />
+
+            {/* Summary Card */}
+            {projects.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-base-card rounded-2xl p-4 border border-white/5">
+                        <div className="flex items-center gap-2 mb-2">
+                            <DollarSign size={16} className="text-semantic-yellow" />
+                            <span className="text-xs text-ink-gray font-medium">A Receber</span>
+                        </div>
+                        <p className="text-xl font-bold text-white">
+                            <CurrencyDisplay amount={totals.pending} currency={settings.mainCurrency} />
+                        </p>
+                    </div>
+                    <div className="bg-base-card rounded-2xl p-4 border border-white/5">
+                        <div className="flex items-center gap-2 mb-2">
+                            <TrendingUp size={16} className="text-brand" />
+                            <span className="text-xs text-ink-gray font-medium">MRR</span>
+                        </div>
+                        <p className="text-xl font-bold text-brand">
+                            <CurrencyDisplay amount={totals.mrr} currency={settings.mainCurrency} />
+                        </p>
+                    </div>
+                    <div className="bg-base-card rounded-2xl p-4 border border-white/5">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Repeat size={16} className="text-ink-gray" />
+                            <span className="text-xs text-ink-gray font-medium">Projetos</span>
+                        </div>
+                        <p className="text-xl font-bold text-white">{projects.length}</p>
+                    </div>
+                    {totals.overdueCount > 0 && (
+                        <div className="bg-semantic-red/10 rounded-2xl p-4 border border-semantic-red/30">
+                            <div className="flex items-center gap-2 mb-2">
+                                <AlertTriangle size={16} className="text-semantic-red" />
+                                <span className="text-xs text-semantic-red font-medium">Atrasados</span>
+                            </div>
+                            <p className="text-xl font-bold text-semantic-red">{totals.overdueCount}</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Search and Filters */}
+            <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-gray" />
+                    <input
+                        type="text"
+                        placeholder="Buscar cliente ou projeto..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="w-full bg-base-card border border-white/5 rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-ink-gray outline-none focus:border-brand/50 transition-colors"
+                    />
+                </div>
+                <button
+                    onClick={() => setShowOnlyPending(!showOnlyPending)}
+                    className={`px-4 py-3 rounded-xl text-sm font-medium transition-all border whitespace-nowrap ${
+                        showOnlyPending 
+                            ? 'bg-semantic-yellow/10 border-semantic-yellow/30 text-semantic-yellow' 
+                            : 'bg-base-card border-white/5 text-ink-gray hover:text-white'
+                    }`}
+                >
+                    <AlertTriangle size={14} className="inline-block mr-2" />
+                    Com Pendência
+                </button>
+            </div>
 
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 {(['ALL', ProjectStatus.ACTIVE, ProjectStatus.ONGOING, ProjectStatus.COMPLETED, ProjectStatus.PAID] as const).map((status) => {
@@ -110,6 +229,21 @@ const Projects: React.FC = () => {
                                 .filter(pay => pay.status === PaymentStatus.SCHEDULED)
                                 .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
                             
+                            const getNextAction = () => {
+                                if (hasOverdue) return { text: 'Cobrar pagamento atrasado', color: 'text-semantic-red' };
+                                if (total.remaining > 0 && nextScheduledPayment) {
+                                    const days = Math.ceil((new Date(nextScheduledPayment.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                    if (days <= 0) return { text: 'Confirmar pagamento de hoje', color: 'text-semantic-yellow' };
+                                    if (days <= 3) return { text: `Pagamento em ${days} dia${days > 1 ? 's' : ''}`, color: 'text-semantic-yellow' };
+                                    return { text: `Próximo: ${new Date(nextScheduledPayment.date).toLocaleDateString()}`, color: 'text-ink-gray' };
+                                }
+                                if (total.remaining > 0) return { text: 'Agendar ou cobrar', color: 'text-semantic-yellow' };
+                                if (p.status === ProjectStatus.ACTIVE) return { text: 'Projeto em andamento', color: 'text-brand' };
+                                if (p.status === ProjectStatus.COMPLETED) return { text: 'Aguardando pagamento final', color: 'text-semantic-yellow' };
+                                return null;
+                            };
+                            const nextAction = getNextAction();
+                            
                             let progressPercent = 0;
                             if (isRetainer) {
                                 progressPercent = (new Date().getDate() / 30) * 100;
@@ -161,6 +295,12 @@ const Projects: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {nextAction && (
+                                        <p className={`text-xs font-medium ${nextAction.color}`}>
+                                            → {nextAction.text}
+                                        </p>
+                                    )}
 
                                     {(nextScheduledPayment || (total.remaining > 0 && userProfile.pixKey)) && p.status !== ProjectStatus.PAID && (
                                         <div className="flex items-center gap-2 pt-2 border-t border-white/5">

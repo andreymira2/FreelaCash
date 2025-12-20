@@ -1,36 +1,31 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { Card, Button, Badge, CurrencyDisplay, Input, Avatar, ProgressBar, Select } from '../components/ui';
 import { ProjectStatus, ProjectContractType, Payment, PaymentStatus, Client, Currency, CURRENCY_SYMBOLS } from '../types';
-import { ArrowLeft, Clock, Trash2, DollarSign, Edit2, User, Plus, CheckCircle2, Circle, FileText, Calendar, ShieldCheck, MessageCircle, Copy, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { ArrowLeft, Clock, Trash2, DollarSign, Edit2, User, Plus, CheckCircle2, Circle, FileText, Calendar, ShieldCheck, MessageCircle, Copy, Settings } from 'lucide-react';
 import { useProjectFinancials } from '../hooks/useFinancialEngine';
 import { parseLocalDateToISO, parseNumber, toInputDate } from '../utils/format';
 
 const ProjectDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { projects, clients, userProfile, addWorkLog, updateProject, deleteProject, duplicateProject, addPayment, updatePayment, deletePayment, addProjectAdjustment, updateClient, addClient } = useData();
+    const { projects, clients, userProfile, updateProject, deleteProject, duplicateProject, addPayment, updatePayment, deletePayment, addProjectAdjustment, updateClient, addClient } = useData();
     const navigate = useNavigate();
 
     const project = projects.find(p => p.id === id);
     const projectFinancials = useProjectFinancials(id || '');
 
-    const [activeTab, setActiveTab] = useState<'SUMMARY' | 'CONFIG'>('SUMMARY');
     const [showEditProject, setShowEditProject] = useState(false);
+    const [showChecklist, setShowChecklist] = useState(false);
     const [showEditClient, setShowEditClient] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showInstallmentModal, setShowInstallmentModal] = useState(false);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [selectedReceiptPayment, setSelectedReceiptPayment] = useState<Payment | null>(null);
-    const [showTimer, setShowTimer] = useState(false);
     
     const [installmentCount, setInstallmentCount] = useState(2);
     const [installmentDate, setInstallmentDate] = useState(toInputDate(new Date().toISOString()));
     const [payFirstNow, setPayFirstNow] = useState(true);
-
-    const [desc, setDesc] = useState('');
-    const [isTimerRunning, setIsTimerRunning] = useState(false);
-    const [timerSeconds, setTimerSeconds] = useState(0);
 
     const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
     const [paymentAmount, setPaymentAmount] = useState('');
@@ -62,13 +57,6 @@ const ProjectDetails: React.FC = () => {
             fees: projectFinancials.fees
         };
     }, [projectFinancials]);
-
-    useEffect(() => {
-        let interval: number | undefined;
-        if (isTimerRunning) { interval = window.setInterval(() => setTimerSeconds(prev => prev + 1), 1000); }
-        else { clearInterval(interval); }
-        return () => clearInterval(interval);
-    }, [isTimerRunning]);
 
     if (!project) return <div className="p-8 text-center text-ink-gray">Projeto não encontrado.</div>;
 
@@ -195,16 +183,38 @@ const ProjectDetails: React.FC = () => {
                 </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="bg-base-card rounded-xl p-4 border border-white/5">
-                <div className="flex justify-between text-xs font-medium text-ink-dim mb-2">
-                    <span>{isRetainer ? 'Ciclo do mês' : 'Progresso de pagamento'}</span>
-                    <span>{Math.round(progressPercent)}%</span>
+            {/* Progress Bar - Only for non-retainer projects */}
+            {!isRetainer ? (
+                <div className="bg-base-card rounded-xl p-4 border border-white/5">
+                    <div className="flex justify-between text-xs font-medium text-ink-dim mb-2">
+                        <span>Progresso de pagamento</span>
+                        <span>{Math.round(progressPercent)}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-brand" style={{ width: `${Math.min(progressPercent, 100)}%` }} />
+                    </div>
                 </div>
-                <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-brand" style={{ width: `${Math.min(progressPercent, 100)}%` }} />
+            ) : (
+                <div className="bg-base-card rounded-xl p-4 border border-white/5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center">
+                            <Calendar size={18} className="text-brand" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-ink-gray font-medium">Próximo vencimento</p>
+                            <p className="text-white font-bold">
+                                Dia {project.renewalDate ? new Date(project.renewalDate).getDate() : new Date().getDate()}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs text-ink-gray">MRR</p>
+                        <p className="text-brand font-bold">
+                            <CurrencyDisplay amount={totals.net} currency={project.currency} />
+                        </p>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* WhatsApp Billing Banner */}
             {totals.remaining > 0 && (
@@ -253,264 +263,162 @@ const ProjectDetails: React.FC = () => {
                 )
             )}
 
-            {/* Tabs - Now only 2 */}
-            <div className="border-b border-white/10 flex gap-6">
-                {([{ id: 'SUMMARY', label: 'Resumo' }, { id: 'CONFIG', label: 'Configurar' }] as const).map(tab => (
-                    <button 
-                        key={tab.id} 
-                        onClick={() => setActiveTab(tab.id)} 
-                        className={`pb-4 text-sm font-bold uppercase tracking-wider border-b-2 transition-all ${activeTab === tab.id ? 'text-brand border-brand' : 'text-ink-gray border-transparent hover:text-white'}`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+            {/* Main Content - Single Page */}
+            <div className="space-y-6">
+                {/* Quick Actions */}
+                <div className="flex flex-wrap gap-3">
+                    <Button variant="primary" onClick={() => openPaymentModal()} className="h-10">
+                        <Plus size={16} /> Pagamento
+                    </Button>
+                    {totals.remaining > 0 && (
+                        <Button variant="outline" onClick={() => setShowInstallmentModal(true)} className="h-10 border-white/10">
+                            Parcelar
+                        </Button>
+                    )}
+                </div>
 
-            {/* Tab Content */}
-            <div className="min-h-[300px]">
-                {activeTab === 'SUMMARY' && (
-                    <div className="space-y-6 animate-in fade-in">
-                        {/* Quick Actions */}
-                        <div className="flex flex-wrap gap-3">
-                            <Button variant="primary" onClick={() => openPaymentModal()} className="h-10">
-                                <Plus size={16} /> Pagamento
-                            </Button>
-                            {totals.remaining > 0 && (
-                                <Button variant="outline" onClick={() => setShowInstallmentModal(true)} className="h-10 border-white/10">
-                                    Parcelar
-                                </Button>
-                            )}
-                            <Button variant="outline" onClick={() => { resetPaymentForm(); setIsAdjustment(true); setShowPaymentModal(true); }} className="h-10 border-white/10">
-                                Extra
-                            </Button>
-                            <button 
-                                onClick={() => setShowTimer(!showTimer)}
-                                className={`flex items-center gap-2 px-4 h-10 rounded-xl text-sm font-medium transition-all ${showTimer ? 'bg-brand/20 text-brand' : 'bg-white/5 text-ink-gray hover:text-white'}`}
-                            >
-                                <Clock size={16} />
-                                Timer
-                                {showTimer ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                            </button>
-                        </div>
-
-                        {/* Collapsible Timer */}
-                        {showTimer && (
-                            <Card className="animate-in slide-in-from-top-2">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="font-bold text-white flex items-center gap-2"><Clock size={18} className="text-brand" /> Timer</h3>
-                                    <div className="text-2xl font-mono font-bold text-white">
-                                        {new Date(timerSeconds * 1000).toISOString().substr(11, 8)}
+                {/* Payment History */}
+                <div>
+                    <h3 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
+                        <DollarSign size={18} className="text-brand" />
+                        Histórico de Pagamentos
+                    </h3>
+                    <div className="space-y-3">
+                        {paymentsList.length > 0 ? paymentsList.map(pay => {
+                            const isPaid = pay.status === PaymentStatus.PAID || !pay.status;
+                            const isOverdue = !isPaid && new Date(pay.date) < new Date();
+                            return (
+                                <div key={pay.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-colors group gap-3 ${isPaid ? 'bg-white/5 border-white/5' : isOverdue ? 'bg-semantic-red/10 border-semantic-red/30' : 'bg-white/5 border-white/10'}`}>
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isPaid ? 'bg-brand/10 text-brand' : 'bg-white/5 text-ink-gray'}`}>
+                                            {isPaid ? <ShieldCheck size={18} /> : <Clock size={18} />}
+                                        </div>
+                                        <div>
+                                            <p className={`font-bold ${isPaid ? 'text-white' : isOverdue ? 'text-semantic-red' : 'text-ink-dim'}`}>
+                                                <CurrencyDisplay amount={pay.amount} currency={project.currency} />
+                                            </p>
+                                            <p className="text-xs text-ink-gray flex items-center gap-1 flex-wrap">
+                                                {new Date(pay.date).toLocaleDateString()} • {pay.note || 'Pagamento'} 
+                                                {isOverdue && <span className="text-semantic-red font-bold ml-1">ATRASADO</span>}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                                        {!isPaid ? (
+                                            <Button variant="primary" className="h-8 text-xs px-3" onClick={() => updatePayment(project.id, { ...pay, status: PaymentStatus.PAID, date: new Date().toISOString() })}>
+                                                Confirmar
+                                            </Button>
+                                        ) : (
+                                            <button onClick={() => { setSelectedReceiptPayment(pay); setShowReceiptModal(true); }} className="px-3 py-1.5 rounded-lg bg-black border border-white/10 text-ink-gray hover:text-white hover:border-brand text-xs font-bold uppercase flex items-center gap-1">
+                                                <FileText size={12} /> Recibo
+                                            </button>
+                                        )}
+                                        <div className="flex gap-1">
+                                            <button onClick={() => openPaymentModal(pay)} className="p-2 text-ink-dim hover:text-white rounded-full" title="Editar"><Edit2 size={16} /></button>
+                                            <button onClick={() => { if (window.confirm("Excluir?")) deletePayment(project.id, pay.id) }} className="p-2 text-ink-dim hover:text-semantic-red rounded-full" title="Excluir"><Trash2 size={16} /></button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <Button 
-                                        variant={isTimerRunning ? "danger" : "primary"} 
-                                        className="h-10 px-6" 
-                                        onClick={() => { 
-                                            if (isTimerRunning) { 
-                                                addWorkLog(project.id, { id: Date.now().toString(), date: new Date().toISOString(), hours: timerSeconds / 3600, description: desc || 'Sessão Rápida', billable: true }); 
-                                                setTimerSeconds(0); 
-                                                setDesc(''); 
-                                            } 
-                                            setIsTimerRunning(!isTimerRunning); 
-                                        }}
-                                    >
-                                        {isTimerRunning ? 'Parar & Salvar' : 'Iniciar'}
-                                    </Button>
-                                    <input 
-                                        placeholder="Descrição" 
-                                        className="flex-1 bg-white/5 text-white rounded-xl px-4 text-sm outline-none focus:ring-1 focus:ring-brand" 
-                                        value={desc} 
-                                        onChange={e => setDesc(e.target.value)} 
-                                    />
-                                </div>
-                            </Card>
+                            );
+                        }) : (
+                            <div className="text-center py-8 text-ink-dim text-sm border border-dashed border-white/10 rounded-xl">
+                                Nenhum pagamento registrado.
+                            </div>
                         )}
-
-                        {/* Payment History */}
-                        <div>
-                            <h3 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
-                                <DollarSign size={18} className="text-brand" />
-                                Histórico de Pagamentos
-                            </h3>
-                            <div className="space-y-3">
-                                {paymentsList.length > 0 ? (
-                                    paymentsList.map(pay => {
-                                        const isPaid = pay.status === PaymentStatus.PAID || !pay.status;
-                                        const isOverdue = !isPaid && new Date(pay.date) < new Date();
-                                        return (
-                                            <div key={pay.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-colors group gap-3 ${isPaid ? 'bg-white/5 border-white/5' : isOverdue ? 'bg-semantic-red/10 border-semantic-red/30' : 'bg-white/5 border-white/10'}`}>
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isPaid ? 'bg-brand/10 text-brand' : 'bg-white/5 text-ink-gray'}`}>
-                                                        {isPaid ? <ShieldCheck size={18} /> : <Clock size={18} />}
-                                                    </div>
-                                                    <div>
-                                                        <p className={`font-bold ${isPaid ? 'text-white' : isOverdue ? 'text-semantic-red' : 'text-ink-dim'}`}>
-                                                            <CurrencyDisplay amount={pay.amount} currency={project.currency} />
-                                                        </p>
-                                                        <p className="text-xs text-ink-gray flex items-center gap-1 flex-wrap">
-                                                            {new Date(pay.date).toLocaleDateString()} • {pay.note || 'Pagamento'} 
-                                                            {isOverdue && <span className="text-semantic-red font-bold ml-1">ATRASADO</span>}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2 self-end sm:self-auto">
-                                                    {!isPaid ? (
-                                                        <Button 
-                                                            variant="primary" 
-                                                            className="h-8 text-xs px-3" 
-                                                            onClick={() => updatePayment(project.id, { ...pay, status: PaymentStatus.PAID, date: new Date().toISOString() })}
-                                                        >
-                                                            Confirmar
-                                                        </Button>
-                                                    ) : (
-                                                        <button 
-                                                            onClick={() => { setSelectedReceiptPayment(pay); setShowReceiptModal(true); }} 
-                                                            className="px-3 py-1.5 rounded-lg bg-black border border-white/10 text-ink-gray hover:text-white hover:border-brand text-xs font-bold uppercase flex items-center gap-1"
-                                                        >
-                                                            <FileText size={12} /> Recibo
-                                                        </button>
-                                                    )}
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => openPaymentModal(pay)} className="p-2 text-ink-dim hover:text-white rounded-full" title="Editar"><Edit2 size={16} /></button>
-                                                        <button onClick={() => { if (window.confirm("Excluir?")) deletePayment(project.id, pay.id) }} className="p-2 text-ink-dim hover:text-semantic-red rounded-full" title="Excluir"><Trash2 size={16} /></button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="text-center py-8 text-ink-dim text-sm border border-dashed border-white/10 rounded-xl">
-                                        Nenhum pagamento registrado.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Profit Summary */}
-                        {!isRetainer && project.platformFee && project.platformFee > 0 && (
-                            <Card>
-                                <h4 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">Lucro Líquido</h4>
-                                <div className="space-y-3 text-sm">
-                                    <div className="flex justify-between text-ink-gray">
-                                        <span>Bruto</span>
-                                        <span><CurrencyDisplay amount={totals.gross} currency={project.currency} /></span>
-                                    </div>
-                                    <div className="flex justify-between text-ink-gray">
-                                        <span>Taxas ({project.platformFee}%)</span>
-                                        <span className="text-semantic-red">- <CurrencyDisplay amount={totals.fees} currency={project.currency} /></span>
-                                    </div>
-                                    <div className="border-t border-white/10 pt-3 flex justify-between text-white font-bold text-base">
-                                        <span>Lucro Real</span>
-                                        <span className="text-brand"><CurrencyDisplay amount={totals.profit} currency={project.currency} /></span>
-                                    </div>
-                                </div>
-                            </Card>
-                        )}
-
-                        {/* Client Info */}
-                        <Card>
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-white flex items-center gap-2"><User size={18} className="text-semantic-blue" /> Cliente</h3>
-                                <Button variant="ghost" className="h-8 text-xs" onClick={() => setShowEditClient(true)}>Editar</Button>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <Avatar name={project.clientName} className="w-12 h-12" />
-                                <div>
-                                    <p className="font-bold text-white">{project.clientName}</p>
-                                    <p className="text-xs text-ink-gray">{client?.companyName || 'Pessoa Física'}</p>
-                                </div>
-                            </div>
-                        </Card>
                     </div>
+                </div>
+
+                {/* Profit Summary */}
+                {!isRetainer && project.platformFee && project.platformFee > 0 && (
+                    <Card>
+                        <h4 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">Lucro Líquido</h4>
+                        <div className="space-y-3 text-sm">
+                            <div className="flex justify-between text-ink-gray">
+                                <span>Bruto</span>
+                                <span><CurrencyDisplay amount={totals.gross} currency={project.currency} /></span>
+                            </div>
+                            <div className="flex justify-between text-ink-gray">
+                                <span>Taxas ({project.platformFee}%)</span>
+                                <span className="text-semantic-red">- <CurrencyDisplay amount={totals.fees} currency={project.currency} /></span>
+                            </div>
+                            <div className="border-t border-white/10 pt-3 flex justify-between text-white font-bold text-base">
+                                <span>Lucro Real</span>
+                                <span className="text-brand"><CurrencyDisplay amount={totals.profit} currency={project.currency} /></span>
+                            </div>
+                        </div>
+                    </Card>
                 )}
 
-                {activeTab === 'CONFIG' && (
-                    <div className="space-y-6 animate-in fade-in">
-                        {/* Checklist */}
-                        <Card>
-                            <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-                                <CheckCircle2 size={20} className="text-brand" /> Checklist
-                            </h3>
+                {/* Client Info */}
+                <Card>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-white flex items-center gap-2"><User size={18} className="text-semantic-blue" /> Cliente</h3>
+                        <Button variant="ghost" className="h-8 text-xs" onClick={() => setShowEditClient(true)}>Editar</Button>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <Avatar name={project.clientName} className="w-12 h-12" />
+                        <div>
+                            <p className="font-bold text-white">{project.clientName}</p>
+                            <p className="text-xs text-ink-gray">{client?.companyName || 'Pessoa Física'}</p>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Collapsible Checklist */}
+                <Card>
+                    <button onClick={() => setShowChecklist(!showChecklist)} className="w-full flex items-center justify-between">
+                        <h3 className="font-bold text-white flex items-center gap-2">
+                            <CheckCircle2 size={20} className="text-brand" /> Checklist
+                            {project.checklist && project.checklist.length > 0 && (
+                                <span className="text-xs text-ink-gray">({project.checklist.filter(t => t.completed).length}/{project.checklist.length})</span>
+                            )}
+                        </h3>
+                        <span className="text-ink-gray text-sm">{showChecklist ? '−' : '+'}</span>
+                    </button>
+                    {showChecklist && (
+                        <div className="mt-4 animate-in slide-in-from-top-2">
                             <div className="flex gap-2 mb-4">
-                                <input 
-                                    className="flex-1 bg-white/5 text-white px-4 py-3 rounded-xl outline-none border border-transparent focus:border-brand/50 transition-colors" 
-                                    placeholder="Nova tarefa..." 
-                                    value={newTaskText} 
-                                    onChange={e => setNewTaskText(e.target.value)} 
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter' && newTaskText) {
-                                            updateProject(project.id, { checklist: [...(project.checklist || []), { id: Date.now().toString(), text: newTaskText, completed: false }] });
-                                            setNewTaskText('');
-                                        }
-                                    }} 
-                                />
-                                <Button variant="secondary" onClick={() => { 
-                                    if (newTaskText) { 
-                                        updateProject(project.id, { checklist: [...(project.checklist || []), { id: Date.now().toString(), text: newTaskText, completed: false }] }); 
-                                        setNewTaskText(''); 
-                                    } 
-                                }}>
+                                <input className="flex-1 bg-white/5 text-white px-4 py-3 rounded-xl outline-none border border-transparent focus:border-brand/50 transition-colors" placeholder="Nova tarefa..." value={newTaskText} onChange={e => setNewTaskText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newTaskText) { updateProject(project.id, { checklist: [...(project.checklist || []), { id: Date.now().toString(), text: newTaskText, completed: false }] }); setNewTaskText(''); } }} />
+                                <Button variant="secondary" onClick={() => { if (newTaskText) { updateProject(project.id, { checklist: [...(project.checklist || []), { id: Date.now().toString(), text: newTaskText, completed: false }] }); setNewTaskText(''); } }}>
                                     <Plus size={16} />
                                 </Button>
                             </div>
                             <div className="space-y-2">
                                 {(project.checklist || []).map(t => (
-                                    <div 
-                                        key={t.id} 
-                                        className="flex items-center gap-4 p-4 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-colors" 
-                                        onClick={() => updateProject(project.id, { checklist: project.checklist?.map(x => x.id === t.id ? { ...x, completed: !x.completed } : x) })}
-                                    >
+                                    <div key={t.id} className="flex items-center gap-4 p-4 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-colors" onClick={() => updateProject(project.id, { checklist: project.checklist?.map(x => x.id === t.id ? { ...x, completed: !x.completed } : x) })}>
                                         {t.completed ? <CheckCircle2 className="text-brand" size={20} /> : <Circle className="text-ink-gray hover:text-brand" size={20} />}
                                         <span className={`flex-1 ${t.completed ? "text-ink-dim line-through" : "text-white"}`}>{t.text}</span>
                                     </div>
                                 ))}
-                                {(!project.checklist || project.checklist.length === 0) && (
-                                    <p className="text-center py-4 text-ink-dim text-sm">Nenhuma tarefa ainda.</p>
-                                )}
+                                {(!project.checklist || project.checklist.length === 0) && <p className="text-center py-4 text-ink-dim text-sm">Nenhuma tarefa ainda.</p>}
                             </div>
-                        </Card>
+                        </div>
+                    )}
+                </Card>
 
-                        {/* Timeline */}
-                        <Card>
-                            <h3 className="font-bold text-white mb-6 flex items-center gap-2">
-                                <Calendar size={20} className="text-semantic-blue" /> Timeline
-                            </h3>
-                            <div className="relative pl-4 border-l-2 border-white/10 space-y-6 ml-2">
-                                <div className="relative pl-6">
-                                    <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-black border-2 border-semantic-blue"></div>
-                                    <p className="text-xs text-ink-gray font-bold uppercase mb-1">{new Date(project.startDate).toLocaleDateString()}</p>
-                                    <h4 className="text-white font-bold">Início</h4>
-                                </div>
-                                {project.dueDate && (
-                                    <div className="relative pl-6">
-                                        <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-black border-2 border-ink-gray"></div>
-                                        <p className="text-xs text-ink-gray font-bold uppercase mb-1">{new Date(project.dueDate).toLocaleDateString()}</p>
-                                        <h4 className="text-white font-bold">Prazo</h4>
-                                    </div>
-                                )}
-                            </div>
-                        </Card>
-
-                        {/* Edit Project */}
-                        <Card>
-                            <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-                                <Settings size={20} className="text-ink-gray" /> Ajustes
-                            </h3>
-                            <Button variant="secondary" className="w-full justify-start" onClick={() => setShowEditProject(true)}>
-                                <Edit2 size={16} className="mr-3" /> Editar Detalhes do Projeto
-                            </Button>
-                        </Card>
-
-                        {/* Danger Zone */}
-                        <Card className="border-semantic-red/30 bg-semantic-red/5">
-                            <h3 className="font-bold text-semantic-red mb-2">Zona de Perigo</h3>
-                            <Button variant="danger" className="w-full" onClick={handleDelete}>
-                                <Trash2 size={16} /> Deletar Projeto
-                            </Button>
-                        </Card>
+                {/* Inline Timeline Summary */}
+                <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="flex items-center gap-2 text-ink-gray">
+                        <Calendar size={14} />
+                        <span>Início: {new Date(project.startDate).toLocaleDateString()}</span>
                     </div>
-                )}
+                    {project.dueDate && (
+                        <div className="flex items-center gap-2 text-ink-gray">
+                            <Calendar size={14} />
+                            <span>Prazo: {new Date(project.dueDate).toLocaleDateString()}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Actions Row */}
+                <div className="flex flex-wrap gap-3">
+                    <Button variant="secondary" className="h-10" onClick={() => setShowEditProject(true)}>
+                        <Edit2 size={16} /> Editar Projeto
+                    </Button>
+                    <Button variant="danger" className="h-10" onClick={handleDelete}>
+                        <Trash2 size={16} /> Deletar
+                    </Button>
+                </div>
             </div>
 
             {/* Payment Modal */}
@@ -523,6 +431,31 @@ const ProjectDetails: React.FC = () => {
                             <Input label="Data" type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} required />
                             <Input label="Descrição / Nota" value={paymentNote} onChange={e => setPaymentNote(e.target.value)} placeholder="Ex: Entrada parcial" />
                             <Input label="Nº Nota Fiscal (Opcional)" value={paymentInvoice} onChange={e => setPaymentInvoice(e.target.value)} placeholder="0001" />
+                            
+                            {!editingPaymentId && (
+                                <label className="flex items-center gap-3 p-4 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-colors">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={isAdjustment} 
+                                        onChange={e => setIsAdjustment(e.target.checked)} 
+                                        className="w-5 h-5 rounded bg-white/10 border-white/20 accent-brand"
+                                    />
+                                    <div>
+                                        <span className="text-sm text-white font-medium">É um ajuste (extra)</span>
+                                        <p className="text-xs text-ink-gray">Acréscimo ao valor original do projeto</p>
+                                    </div>
+                                </label>
+                            )}
+                            
+                            {isAdjustment && (
+                                <Input 
+                                    label="Motivo do Ajuste" 
+                                    value={adjustmentDesc} 
+                                    onChange={e => setAdjustmentDesc(e.target.value)} 
+                                    placeholder="Ex: Alterações de escopo, urgência..." 
+                                />
+                            )}
+                            
                             <Button type="submit" className="w-full h-12 mt-2">Salvar</Button>
                             <Button type="button" variant="ghost" className="w-full" onClick={() => setShowPaymentModal(false)}>Cancelar</Button>
                         </form>
