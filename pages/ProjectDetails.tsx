@@ -98,6 +98,10 @@ const ProjectDetails: React.FC = () => {
         setShowPaymentModal(true);
     };
 
+    const handleConfirmPayment = (pay: Payment) => {
+        updatePayment(project.id, { ...pay, status: PaymentStatus.PAID, date: new Date().toISOString() });
+    };
+
     const handleSaveClient = (updatedClient: Client) => {
         if (updatedClient.id === 'temp') { const newId = Date.now().toString(); addClient({ ...updatedClient, id: newId }); updateProject(project.id, { clientId: newId, clientName: updatedClient.name }); }
         else { updateClient(updatedClient.id, updatedClient); if (updatedClient.name !== project.clientName) updateProject(project.id, { clientName: updatedClient.name }); }
@@ -278,7 +282,7 @@ const ProjectDetails: React.FC = () => {
                                     </div>
                                     <div className="flex items-center gap-2 self-end sm:self-auto">
                                         {!isPaid ? (
-                                            <Button variant="primary" className="h-8 text-xs px-3" onClick={() => updatePayment(project.id, { ...pay, status: PaymentStatus.PAID, date: new Date().toISOString() })}>
+                                            <Button variant="primary" className="h-8 text-xs px-3" onClick={() => handleConfirmPayment(pay)}>
                                                 Confirmar
                                             </Button>
                                         ) : (
