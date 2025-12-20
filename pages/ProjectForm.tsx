@@ -9,7 +9,7 @@ import { parseLocalDateToISO, parseNumber, toInputDate } from '../utils/format';
 
 const ProjectForm: React.FC = () => {
     const navigate = useNavigate();
-    const { addProject, clients, addClient } = useData();
+    const { addProject, clients, addClient, getOrCreateClientByName } = useData();
     const [error, setError] = useState<string>('');
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -92,6 +92,11 @@ const ProjectForm: React.FC = () => {
 
         const initialStatus = formData.contractType === ProjectContractType.ONE_OFF ? ProjectStatus.ACTIVE : ProjectStatus.ONGOING;
 
+        // Resolve or create Client entity
+        const client = selectedClientId 
+            ? clients.find(c => c.id === selectedClientId) || getOrCreateClientByName(formData.clientName)
+            : getOrCreateClientByName(formData.clientName);
+
         const payments = [];
         if (formData.firstPaymentDate) {
             const paymentAmount = formData.firstPaymentAmount ? parseNumber(formData.firstPaymentAmount) : rateVal;
@@ -109,7 +114,8 @@ const ProjectForm: React.FC = () => {
             createdAt: Date.now(),
             status: initialStatus,
             logs: [],
-            clientName: formData.clientName,
+            clientName: client.name,
+            clientId: client.id,
             type: formData.type,
             contractType: formData.contractType,
             category: formData.category || 'Geral',
@@ -208,7 +214,10 @@ const ProjectForm: React.FC = () => {
                                         <Input
                                             placeholder="Buscar ou criar cliente..."
                                             value={formData.clientName}
-                                            onChange={e => setFormData({ ...formData, clientName: e.target.value })}
+                                            onChange={e => {
+                                                setFormData({ ...formData, clientName: e.target.value });
+                                                setSelectedClientId(null);
+                                            }}
                                             autoFocus
                                             label=""
                                         />
@@ -218,14 +227,23 @@ const ProjectForm: React.FC = () => {
                                                 <span className="text-sm text-brand">Novo cliente: <strong>{formData.clientName}</strong></span>
                                             </div>
                                         )}
+                                        {formData.clientName.trim() && filteredClients.some(c => c.name.toLowerCase() === formData.clientName.toLowerCase()) && selectedClientId && (
+                                            <div className="p-3 bg-green-900/20 border border-green-500/30 rounded-xl flex items-center gap-3">
+                                                <Check size={16} className="text-green-400" />
+                                                <span className="text-sm text-green-400">Cliente selecionado: <strong>{formData.clientName}</strong></span>
+                                            </div>
+                                        )}
                                         {filteredClients.length > 0 && formData.clientName.trim() && (
                                             <div className="flex flex-wrap gap-2">
                                                 {filteredClients.slice(0, 5).map(c => (
                                                     <button
                                                         key={c.id}
                                                         type="button"
-                                                        onClick={() => setFormData({ ...formData, clientName: c.name })}
-                                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${formData.clientName === c.name ? 'bg-brand text-black' : 'bg-white/5 text-white hover:bg-white/10'}`}
+                                                        onClick={() => {
+                                                            setSelectedClientId(c.id);
+                                                            setFormData({ ...formData, clientName: c.name });
+                                                        }}
+                                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${selectedClientId === c.id ? 'bg-brand text-black' : 'bg-white/5 text-white hover:bg-white/10'}`}
                                                     >
                                                         {c.name}
                                                     </button>
