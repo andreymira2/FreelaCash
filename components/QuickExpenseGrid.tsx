@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { SERVICE_PRESETS, ServicePreset, EXPENSE_CATEGORIES, CURRENCY_SYMBOLS, Currency } from '../types';
-import { Search, Plus, HelpCircle, Home, Zap, UtensilsCrossed, Wrench, Car, Gamepad2, PenLine } from 'lucide-react';
+import { Plus, Home, Zap, UtensilsCrossed, Wrench, Car, Gamepad2, PenLine } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
 interface QuickExpenseGridProps {
@@ -42,13 +42,12 @@ const CompanyLogo: React.FC<{ domain: string; name: string; size?: number; class
 };
 
 const CATEGORY_TABS = [
-    { id: 'all', label: 'Todos', icon: Zap, color: 'brand' },
-    { id: 'Moradia', label: 'Moradia', icon: Home, color: 'blue-500' },
-    { id: 'Contas Fixas', label: 'Contas', icon: Zap, color: 'semantic-yellow' },
-    { id: 'Alimentação', label: 'Alimentação', icon: UtensilsCrossed, color: 'orange-500' },
-    { id: 'Ferramentas', label: 'Ferramentas', icon: Wrench, color: 'semantic-purple' },
-    { id: 'Transporte', label: 'Transporte', icon: Car, color: 'semantic-red' },
-    { id: 'Lazer', label: 'Lazer', icon: Gamepad2, color: 'green-500' },
+    { id: 'Moradia', label: 'Moradia', icon: Home },
+    { id: 'Contas Fixas', label: 'Contas', icon: Zap },
+    { id: 'Alimentação', label: 'Alimentação', icon: UtensilsCrossed },
+    { id: 'Ferramentas', label: 'Ferramentas', icon: Wrench },
+    { id: 'Transporte', label: 'Transporte', icon: Car },
+    { id: 'Lazer', label: 'Lazer', icon: Gamepad2 },
 ];
 
 const formatPrice = (amount?: number, currency?: Currency) => {
@@ -59,28 +58,12 @@ const formatPrice = (amount?: number, currency?: Currency) => {
 };
 
 const QuickExpenseGrid: React.FC<QuickExpenseGridProps> = ({ onSelect, onQuickAdd }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState('all');
-    const [showPresets, setShowPresets] = useState(false);
+    const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
-    const filteredPresets = useMemo(() => {
-        let result = SERVICE_PRESETS;
-
-        if (activeTab !== 'all') {
-            result = result.filter(p => p.defaultCategory === activeTab);
-        }
-
-        if (searchTerm) {
-            const lower = searchTerm.toLowerCase();
-            result = result.filter(p => 
-                p.name.toLowerCase().includes(lower) || 
-                p.defaultCategory.toLowerCase().includes(lower) ||
-                p.defaultTags.some(t => t.toLowerCase().includes(lower))
-            );
-        }
-
-        return result;
-    }, [searchTerm, activeTab]);
+    const categoryPresets = useMemo(() => {
+        if (!activeCategory) return [];
+        return SERVICE_PRESETS.filter(p => p.defaultCategory === activeCategory);
+    }, [activeCategory]);
 
     const handleCustomExpense = () => {
         onSelect({ 
@@ -94,125 +77,102 @@ const QuickExpenseGrid: React.FC<QuickExpenseGridProps> = ({ onSelect, onQuickAd
         });
     };
 
+    const handleCategoryClick = (categoryId: string) => {
+        setActiveCategory(activeCategory === categoryId ? null : categoryId);
+    };
+
     const getPresetIcon = (iconName: string) => {
         const IconComponent = (Icons as any)[iconName];
-        return IconComponent ? <IconComponent size={24} /> : <Plus size={24} />;
+        return IconComponent ? <IconComponent size={22} /> : <Plus size={22} />;
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             <button
                 onClick={handleCustomExpense}
-                className="w-full flex items-center gap-5 p-6 rounded-3xl bg-gradient-to-r from-brand/20 to-brand/5 border-2 border-brand/40 hover:border-brand hover:from-brand/30 transition-all duration-300 group"
+                className="w-full flex items-center gap-4 p-5 rounded-2xl bg-gradient-to-r from-brand/20 to-brand/5 border-2 border-brand/40 hover:border-brand hover:from-brand/30 transition-all duration-300 group"
             >
-                <div className="w-16 h-16 rounded-2xl bg-brand flex items-center justify-center group-hover:scale-110 transition-transform shadow-neon">
-                    <PenLine size={28} className="text-black" />
+                <div className="w-14 h-14 rounded-xl bg-brand flex items-center justify-center group-hover:scale-110 transition-transform shadow-neon">
+                    <PenLine size={24} className="text-black" />
                 </div>
                 <div className="text-left flex-1">
-                    <h4 className="text-lg font-black text-white group-hover:text-brand transition-colors">
+                    <h4 className="text-base font-black text-white group-hover:text-brand transition-colors">
                         Adicionar Despesa
                     </h4>
-                    <p className="text-sm text-ink-gray mt-1">
-                        Aluguel, conta de luz, mercado, qualquer gasto
+                    <p className="text-xs text-ink-gray mt-0.5">
+                        Qualquer tipo de gasto
                     </p>
                 </div>
-                <Plus size={24} className="text-brand opacity-50 group-hover:opacity-100 group-hover:rotate-90 transition-all" />
+                <Plus size={20} className="text-brand opacity-50 group-hover:opacity-100 group-hover:rotate-90 transition-all" />
             </button>
 
-            <div className="relative">
-                <button
-                    onClick={() => setShowPresets(!showPresets)}
-                    className="w-full flex items-center justify-between py-3 text-sm text-ink-gray hover:text-white transition-colors"
-                >
-                    <span className="font-medium">Atalhos rápidos</span>
-                    <span className={`transition-transform duration-200 ${showPresets ? 'rotate-180' : ''}`}>
-                        <Icons.ChevronDown size={16} />
-                    </span>
-                </button>
+            <div>
+                <p className="text-xs text-ink-dim mb-3 font-medium">Ou escolha uma categoria:</p>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {CATEGORY_TABS.map((tab) => {
+                        const Icon = tab.icon;
+                        const isActive = activeCategory === tab.id;
+                        const count = SERVICE_PRESETS.filter(p => p.defaultCategory === tab.id).length;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => handleCategoryClick(tab.id)}
+                                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-200 ${
+                                    isActive 
+                                        ? 'bg-brand text-black scale-105' 
+                                        : 'bg-white/5 text-ink-gray hover:bg-white/10 hover:text-white'
+                                }`}
+                            >
+                                <Icon size={20} />
+                                <span className="text-[11px] font-bold">{tab.label}</span>
+                                <span className={`text-[9px] ${isActive ? 'text-black/60' : 'text-ink-dim'}`}>{count} itens</span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
-            {showPresets && (
-                <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
-                    <div className="relative group">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-dim group-focus-within:text-brand transition-colors" />
-                        <input
-                            type="text"
-                            placeholder="Buscar aluguel, luz, Netflix..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-ink-dim focus:border-brand focus:bg-white/10 outline-none transition-all"
-                        />
-                    </div>
-
-                    <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
-                        {CATEGORY_TABS.map((tab) => {
-                            const Icon = tab.icon;
-                            const isActive = activeTab === tab.id;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 ${
-                                        isActive 
-                                            ? 'bg-brand text-black' 
-                                            : 'bg-white/5 text-ink-gray hover:bg-white/10 hover:text-white'
-                                    }`}
-                                >
-                                    <Icon size={14} />
-                                    {tab.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[40vh] overflow-y-auto pr-1 pb-2">
-                        {filteredPresets.map((preset) => {
+            {activeCategory && categoryPresets.length > 0 && (
+                <div className="animate-in slide-in-from-top-2 duration-200">
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 max-h-[35vh] overflow-y-auto overflow-x-hidden scrollbar-hide">
+                        {categoryPresets.map((preset) => {
                             const price = formatPrice(preset.defaultAmount, preset.defaultCurrency);
                             return (
                                 <button
                                     key={preset.id}
                                     onClick={() => onSelect(preset)}
-                                    className="relative flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-brand/30 hover:bg-brand/5 transition-all duration-200 group"
+                                    className="relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-brand/30 hover:bg-brand/5 transition-all duration-200 group"
                                 >
                                     {preset.domain ? (
                                         <CompanyLogo 
                                             domain={preset.domain} 
                                             name={preset.name} 
-                                            size={44} 
+                                            size={36} 
                                             className="group-hover:scale-105 transition-transform"
                                         />
                                     ) : (
-                                        <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center text-ink-gray group-hover:text-brand transition-colors">
+                                        <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-ink-gray group-hover:text-brand transition-colors">
                                             {getPresetIcon(preset.iconName)}
                                         </div>
                                     )}
                                     
-                                    <div className="text-center">
-                                        <span className="text-xs font-medium text-white group-hover:text-brand transition-colors line-clamp-1">
-                                            {preset.name}
+                                    <span className="text-[10px] font-medium text-white group-hover:text-brand transition-colors line-clamp-1 text-center w-full">
+                                        {preset.name}
+                                    </span>
+                                    {price && (
+                                        <span className="text-[9px] text-ink-dim">
+                                            {price}
                                         </span>
-                                        {price && (
-                                            <div className="text-[10px] text-ink-dim mt-0.5">
-                                                {price}
-                                            </div>
-                                        )}
-                                    </div>
+                                    )}
 
                                     {preset.isRecurring && (
-                                        <div className="absolute top-1 right-1 w-4 h-4 bg-brand/80 rounded-full flex items-center justify-center">
-                                            <span className="text-[8px] text-black font-black">∞</span>
+                                        <div className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-brand/80 rounded-full flex items-center justify-center">
+                                            <span className="text-[7px] text-black font-black">∞</span>
                                         </div>
                                     )}
                                 </button>
                             );
                         })}
-
-                        {filteredPresets.length === 0 && (
-                            <div className="col-span-full py-10 text-center">
-                                <HelpCircle size={32} className="mx-auto text-ink-dim mb-2" />
-                                <p className="text-sm text-ink-gray">Nenhum atalho encontrado</p>
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
