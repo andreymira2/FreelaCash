@@ -302,7 +302,7 @@ const Projects: React.FC = () => {
                                         </p>
                                     )}
 
-                                    {p.status !== ProjectStatus.PAID && (
+                                    {p.status !== ProjectStatus.PAID && (nextScheduledPayment || total.remaining > 0) && (
                                         <div className="flex items-center gap-2 pt-2 border-t border-white/5">
                                             {nextScheduledPayment && (
                                                 <button
@@ -313,13 +313,15 @@ const Projects: React.FC = () => {
                                                     Confirmar <CurrencyDisplay amount={nextScheduledPayment.amount} currency={p.currency} />
                                                 </button>
                                             )}
-                                            <button
-                                                onClick={(e) => handleOpenBilling(e, p, total)}
-                                                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-brand/10 text-brand hover:bg-brand/20 transition-all"
-                                            >
-                                                <Send size={14} />
-                                                Cobrar
-                                            </button>
+                                            {total.remaining > 0 && (
+                                                <button
+                                                    onClick={(e) => handleOpenBilling(e, p, total)}
+                                                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-brand/10 text-brand hover:bg-brand/20 transition-all"
+                                                >
+                                                    <Send size={14} />
+                                                    Cobrar <CurrencyDisplay amount={total.remaining} currency={p.currency} />
+                                                </button>
+                                            )}
                                         </div>
                                     )}
 
