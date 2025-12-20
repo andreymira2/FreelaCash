@@ -2,20 +2,25 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { Button, Input, Select, Card } from '../components/ui';
-import { Currency, ProjectType, ProjectStatus, ProjectContractType } from '../types';
-import { ArrowLeft, AlertCircle, CheckCircle2, Zap, Calendar, Clock, Briefcase, DollarSign } from 'lucide-react';
+import { Button, Input, Select, Card, Avatar } from '../components/ui';
+import { Currency, ProjectType, ProjectStatus, ProjectContractType, PaymentStatus } from '../types';
+import { ArrowLeft, AlertCircle, CheckCircle2, Zap, Calendar, Clock, Briefcase, DollarSign, Plus, User, ChevronRight, Check, Sparkles } from 'lucide-react';
 import { parseLocalDateToISO, parseNumber, toInputDate } from '../utils/format';
 
 const ProjectForm: React.FC = () => {
     const navigate = useNavigate();
-    const { addProject, clients } = useData();
+    const { addProject, clients, addClient } = useData();
     const [error, setError] = useState<string>('');
+    const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+    const [newClientName, setNewClientName] = useState('');
+    const [clientSearch, setClientSearch] = useState('');
 
-    // Client Suggestions
-    const uniqueClients = useMemo(() => {
-        return Array.from(new Set(clients.map(c => c.name)));
-    }, [clients]);
+    const filteredClients = useMemo(() => {
+        if (!clientSearch.trim()) return clients.filter(c => !c.isArchived);
+        const query = clientSearch.toLowerCase();
+        return clients.filter(c => !c.isArchived && c.name.toLowerCase().includes(query));
+    }, [clients, clientSearch]);
 
     const [formData, setFormData] = useState({
         clientName: '',
@@ -29,8 +34,30 @@ const ProjectForm: React.FC = () => {
         startDate: toInputDate(new Date().toISOString()),
         contractMonths: '6',
         isOngoing: true,
-        estimatedHours: ''
+        estimatedHours: '',
+        firstPaymentDate: '',
+        firstPaymentAmount: ''
     });
+
+    const handleSelectClient = (clientId: string, clientName: string) => {
+        setSelectedClientId(clientId);
+        setFormData({ ...formData, clientName });
+        setStep(2);
+    };
+
+    const handleCreateNewClient = () => {
+        if (!newClientName.trim()) return;
+        const newClient = {
+            id: Date.now().toString(),
+            name: newClientName.trim(),
+            createdAt: Date.now()
+        };
+        addClient(newClient);
+        setSelectedClientId(newClient.id);
+        setFormData({ ...formData, clientName: newClient.name });
+        setNewClientName('');
+        setStep(2);
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,6 +92,18 @@ const ProjectForm: React.FC = () => {
 
         const initialStatus = formData.contractType === ProjectContractType.ONE_OFF ? ProjectStatus.ACTIVE : ProjectStatus.ONGOING;
 
+        const payments = [];
+        if (formData.firstPaymentDate) {
+            const paymentAmount = formData.firstPaymentAmount ? parseNumber(formData.firstPaymentAmount) : rateVal;
+            payments.push({
+                id: Date.now().toString(),
+                amount: paymentAmount,
+                date: parseLocalDateToISO(formData.firstPaymentDate),
+                status: PaymentStatus.SCHEDULED,
+                note: 'Primeiro pagamento'
+            });
+        }
+
         addProject({
             id: Date.now().toString(),
             createdAt: Date.now(),
@@ -81,7 +120,7 @@ const ProjectForm: React.FC = () => {
             dueDate: formData.dueDate ? parseLocalDateToISO(formData.dueDate) : undefined,
             contractEndDate: contractEndDate,
             estimatedHours: formData.estimatedHours ? parseNumber(formData.estimatedHours) : undefined,
-            payments: [],
+            payments: payments,
             events: [
                 { id: Date.now().toString(), date: new Date().toISOString(), title: 'Projeto Criado', type: 'SYSTEM' }
             ],
@@ -163,23 +202,46 @@ const ProjectForm: React.FC = () => {
                     <Card className="p-6">
                         <div className="space-y-5">
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-2 block">Nome do Cliente</label>
-                                <div className="relative">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-2 block">Cliente</label>
+                                {clients.length > 0 ? (
+                                    <div className="space-y-3">
+                                        <Input
+                                            placeholder="Buscar ou criar cliente..."
+                                            value={formData.clientName}
+                                            onChange={e => setFormData({ ...formData, clientName: e.target.value })}
+                                            autoFocus
+                                            label=""
+                                        />
+                                        {formData.clientName.trim() && !filteredClients.some(c => c.name.toLowerCase() === formData.clientName.toLowerCase()) && (
+                                            <div className="p-3 bg-brand/10 border border-brand/30 rounded-xl flex items-center gap-3">
+                                                <Plus size={16} className="text-brand" />
+                                                <span className="text-sm text-brand">Novo cliente: <strong>{formData.clientName}</strong></span>
+                                            </div>
+                                        )}
+                                        {filteredClients.length > 0 && formData.clientName.trim() && (
+                                            <div className="flex flex-wrap gap-2">
+                                                {filteredClients.slice(0, 5).map(c => (
+                                                    <button
+                                                        key={c.id}
+                                                        type="button"
+                                                        onClick={() => setFormData({ ...formData, clientName: c.name })}
+                                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${formData.clientName === c.name ? 'bg-brand text-black' : 'bg-white/5 text-white hover:bg-white/10'}`}
+                                                    >
+                                                        {c.name}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
                                     <Input
-                                        list="client-list"
-                                        className="w-full px-5 py-4 rounded-2xl border-none bg-dark-900 text-white font-bold text-lg focus:ring-2 focus:ring-primary-400 outline-none transition-all placeholder-slate-600"
-                                        placeholder="Para quem é?"
+                                        placeholder="Nome do cliente"
                                         value={formData.clientName}
                                         onChange={e => setFormData({ ...formData, clientName: e.target.value })}
                                         autoFocus
                                         label=""
                                     />
-                                    <datalist id="client-list">
-                                        {uniqueClients.map(client => (
-                                            <option key={client} value={client} />
-                                        ))}
-                                    </datalist>
-                                </div>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -290,6 +352,32 @@ const ProjectForm: React.FC = () => {
                                 placeholder="0"
                                 value={formData.platformFee}
                                 onChange={e => setFormData({ ...formData, platformFee: e.target.value })}
+                            />
+                        </div>
+                    </Card>
+                </section>
+
+                {/* STEP 3: FIRST PAYMENT (Optional) */}
+                <section className="space-y-6">
+                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-2">
+                        <Sparkles size={16} /> Primeiro Pagamento (Opcional)
+                    </h3>
+                    <Card className="p-6">
+                        <p className="text-sm text-ink-gray mb-4">Agende um pagamento para facilitar o acompanhamento.</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <Input
+                                label="Data do Primeiro Pagamento"
+                                type="date"
+                                value={formData.firstPaymentDate}
+                                onChange={e => setFormData({ ...formData, firstPaymentDate: e.target.value })}
+                            />
+                            <Input
+                                label="Valor (deixe vazio para valor total)"
+                                type="number"
+                                step="0.01"
+                                placeholder={formData.rate || '0.00'}
+                                value={formData.firstPaymentAmount}
+                                onChange={e => setFormData({ ...formData, firstPaymentAmount: e.target.value })}
                             />
                         </div>
                     </Card>

@@ -105,6 +105,37 @@ FreelaCash is a financial management platform designed for freelancers, creative
 - **parseNumber()**: Accepts both comma and dot as decimal separators for Brazilian locale compatibility
 - **Backwards compatible**: Legacy dates saved at UTC midnight continue to display correctly
 
+### Phase 13: Client-Centric Refactoring (December 2024)
+**Goal:** Make Client the primary entity for better recurring client management.
+
+#### Phase 13.1: Client Entity Infrastructure
+- **Client type expanded**: Added preferredBillingChannel, billingEmail, firstProjectDate, lastActivityDate, tags, isArchived fields
+- **Auto-migration system**: Automatically creates Client entities from existing project clientNames and links them retroactively
+- **DataContext methods**: Added addClient, updateClient, deleteClient functions
+
+#### Phase 13.2: ProjectDetails Simplification
+- **Timer removed**: No longer shown on project page
+- **Unified payments**: "Extra" merged with "Payment" via "É ajuste" checkbox
+- **Single-page layout**: Eliminated tabs, replaced with collapsible sections
+- **Recurring display**: Replaced cycle progress bar with "Próximo vencimento: dia X"
+
+#### Phase 13.3: Projects Page Enhancements
+- **Summary cards**: A Receber, MRR, total projects, overdue count at top
+- **Search & filter**: Search by client/project name, "Com pendência" toggle filter
+- **Smart sorting**: Overdue projects appear first with visual highlighting
+- **Next action text**: Each project card shows contextual next step recommendation
+
+#### Phase 13.4: ClientDetails Page
+- **Consolidated client view**: Stats (total earned, pending, MRR, active projects)
+- **Relationship duration**: Shows time since first project
+- **Unified payment history**: All payments across client's projects
+- **Quick actions**: WhatsApp billing button, new project creation
+
+#### Phase 13.5: Improved Project Form
+- **Client selector**: Inline search with quick-select chips for existing clients
+- **New client creation**: Visual indicator when creating new client
+- **First payment scheduling**: Optional section to schedule initial payment during project creation
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
