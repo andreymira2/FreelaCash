@@ -67,7 +67,7 @@ Includes a `manifest.json` to enable Progressive Web App features for mobile ins
 
 ### External Services
 
-None are currently integrated; the application is fully self-contained.
+- **Logo.dev**: Company logo CDN for expense service icons (public token, 500k requests/month free tier).
 
 ### Fonts
 
