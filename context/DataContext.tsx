@@ -106,8 +106,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           database.getExpenses(user.id)
         ]);
 
+        let finalProfile = profile;
+
+        if (!profile) {
+          const metadata = user.user_metadata || {};
+          const oauthName = metadata.full_name || metadata.name || metadata.user_name || '';
+          const oauthAvatar = metadata.avatar_url || metadata.picture || '';
+          
+          if (oauthName) {
+            const newProfile: UserProfile = {
+              name: oauthName,
+              title: 'Freelancer',
+              location: '',
+              taxId: '',
+              pixKey: '',
+              avatar: oauthAvatar
+            };
+            await database.updateUserProfile(user.id, newProfile);
+            finalProfile = newProfile;
+          }
+        }
+
         setData({
-          userProfile: profile || INITIAL_DATA.userProfile,
+          userProfile: finalProfile || INITIAL_DATA.userProfile,
           settings: settings || DEFAULT_SETTINGS,
           clients: clients || [],
           projects: projects || [],

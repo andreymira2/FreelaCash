@@ -36,6 +36,8 @@ const Signup: React.FC = () => {
     if (authError) {
       if (authError.message.includes('already registered')) {
         setError('Este email já está cadastrado');
+      } else if (authError.message.includes('email')) {
+        setError('Email inválido. Verifique e tente novamente.');
       } else {
         setError('Erro ao criar conta. Tente novamente.');
       }
@@ -44,7 +46,7 @@ const Signup: React.FC = () => {
     }
 
     setSuccess(true);
-    setTimeout(() => navigate('/'), 2000);
+    setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
@@ -66,12 +68,21 @@ const Signup: React.FC = () => {
   if (success) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center px-4">
-        <div className="text-center">
+        <div className="text-center max-w-md">
           <div className="w-16 h-16 bg-[#C6FF3F]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="text-[#C6FF3F]" size={32} />
+            <Mail className="text-[#C6FF3F]" size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Conta criada!</h2>
-          <p className="text-zinc-400">Redirecionando...</p>
+          <h2 className="text-2xl font-bold text-white mb-2">Verifique seu email!</h2>
+          <p className="text-zinc-400 mb-6">
+            Enviamos um link de confirmação para <span className="text-white font-medium">{email}</span>. 
+            Clique no link para ativar sua conta.
+          </p>
+          <Link 
+            to="/login" 
+            className="inline-flex items-center gap-2 text-[#C6FF3F] hover:underline"
+          >
+            Ir para o login
+          </Link>
         </div>
       </div>
     );

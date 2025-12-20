@@ -18,9 +18,11 @@ const OnboardingGuard: React.FC<OnboardingGuardProps> = ({ children }) => {
     );
   }
 
-  const isProfileComplete = userProfile.name && userProfile.name !== 'Freelancer';
+  const hasValidName = userProfile.name && 
+    userProfile.name.trim() !== '' && 
+    userProfile.name !== 'Freelancer';
 
-  if (!isProfileComplete) {
+  if (!hasValidName) {
     return <Navigate to="/setup-profile" state={{ from: location }} replace />;
   }
 
