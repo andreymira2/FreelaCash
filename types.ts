@@ -176,6 +176,9 @@ export interface Expense {
   // New Trial Logic
   isTrial?: boolean;
   trialEndDate?: string; // ISO String date when trial ends
+  
+  // Logo for brand recognition
+  logoUrl?: string; // Logo.dev URL for the service
 }
 
 export interface AppSettings {

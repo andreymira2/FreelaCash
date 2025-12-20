@@ -16,6 +16,29 @@ const IconMapper: React.FC<{ name: string; size?: number; className?: string }> 
     return <IconComponent size={size} className={className} />;
 };
 
+const ExpenseLogo: React.FC<{ logoUrl: string; title: string; isTrialActive?: boolean }> = ({ logoUrl, title, isTrialActive }) => {
+    const [hasError, setHasError] = useState(false);
+    
+    if (hasError) {
+        return (
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br from-brand/20 to-brand/5 text-brand font-black border border-brand/20 ${isTrialActive ? 'ring-2 ring-semantic-yellow' : ''}`}>
+                {title.charAt(0).toUpperCase()}
+            </div>
+        );
+    }
+    
+    return (
+        <div className={`w-12 h-12 rounded-xl overflow-hidden shrink-0 ${isTrialActive ? 'ring-2 ring-semantic-yellow' : ''}`}>
+            <img 
+                src={logoUrl} 
+                alt={title} 
+                className="w-full h-full object-contain bg-white"
+                onError={() => setHasError(true)}
+            />
+        </div>
+    );
+};
+
 interface ExpenseFormState {
     id?: string;
     title: string; amount: string; currency: Currency; category: string; date: string; tags: string[]; isWorkRelated: boolean; isRecurring: boolean; recurringFrequency: 'MONTHLY' | 'YEARLY';
@@ -109,10 +132,13 @@ const Expenses: React.FC = () => {
 
         if (formData.isTrial && !formData.trialEndDate) { setFormError('Informe a data de fim do trial.'); return; }
 
+        const logoUrl = selectedPreset?.domain ? `https://img.logo.dev/${selectedPreset.domain}?token=pk_X-1ZO13GSgeOoUrIuJ6GMQ` : undefined;
+        
         const payload = {
             title: formData.title, amount: amountVal, currency: formData.currency, category: formData.category, date: parseLocalDate(formData.date).toISOString(), tags: formData.tags,
             isWorkRelated: formData.isWorkRelated, isRecurring: formData.isRecurring, recurringFrequency: formData.isRecurring ? formData.recurringFrequency : undefined,
-            status: formData.status, dueDay: dueDayVal, isTrial: formData.isTrial, trialEndDate: formData.isTrial ? parseLocalDate(formData.trialEndDate).toISOString() : undefined
+            status: formData.status, dueDay: dueDayVal, isTrial: formData.isTrial, trialEndDate: formData.isTrial ? parseLocalDate(formData.trialEndDate).toISOString() : undefined,
+            logoUrl
         };
 
         addExpense({ id: Date.now().toString(), ...payload });
@@ -339,9 +365,17 @@ const Expenses: React.FC = () => {
 
                                             {/* Col 1: Identity */}
                                             <div className="flex items-center gap-4">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isTrialActive ? (daysLeft <= 3 ? 'bg-semantic-red animate-pulse' : 'bg-semantic-yellow') + ' text-black' : 'bg-white/5 text-ink-gray group-hover:text-white transition-colors'}`}>
-                                                    {isTrialActive ? <Zap size={20} fill="black" /> : <IconMapper name={iconName} size={20} />}
-                                                </div>
+                                                {exp.logoUrl ? (
+                                                    <ExpenseLogo 
+                                                        logoUrl={exp.logoUrl} 
+                                                        title={exp.title} 
+                                                        isTrialActive={isTrialActive} 
+                                                    />
+                                                ) : (
+                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isTrialActive ? (daysLeft <= 3 ? 'bg-semantic-red animate-pulse' : 'bg-semantic-yellow') + ' text-black' : 'bg-white/5 text-ink-gray group-hover:text-white transition-colors'}`}>
+                                                        {isTrialActive ? <Zap size={20} fill="black" /> : <IconMapper name={iconName} size={20} />}
+                                                    </div>
+                                                )}
                                                 <div className="min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <h4 className="font-bold text-white text-sm truncate">{exp.title}</h4>
