@@ -4,10 +4,11 @@ import { useData } from '../context/DataContext';
 import { Card, Button, Input, Select, CurrencyDisplay, Toggle, DateRangeSelect, EmptyState, PageHeader } from '../components/ui';
 import { Currency, EXPENSE_CATEGORIES, SERVICE_PRESETS, CATEGORY_ICONS, ServicePreset, Expense } from '../types';
 import { safeFloat, parseLocalDate, toInputDate } from '../utils/format';
-import { Plus, Trash2, Wallet, X, HelpCircle, CheckCircle2, Clock, AlertTriangle, Zap, Receipt, Store, Search } from 'lucide-react';
+import { Plus, Trash2, Wallet, X, HelpCircle, CheckCircle2, Clock, AlertTriangle, Zap, Receipt, Store, Search, ArrowLeft } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRecurringExpenseProgress, useRecurringExpenseTotal, useCurrencyConverter } from '../hooks/useFinancialEngine';
+import { QuickExpenseGrid, CompanyLogo } from '../components/QuickExpenseGrid';
 
 const IconMapper: React.FC<{ name: string; size?: number; className?: string }> = ({ name, size = 16, className = '' }) => {
     // @ts-ignore
@@ -33,6 +34,8 @@ const Expenses: React.FC = () => {
     const [showForm, setShowForm] = useState(false);
     const [formError, setFormError] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [formStep, setFormStep] = useState<'pick' | 'details'>('pick');
+    const [selectedPreset, setSelectedPreset] = useState<ServicePreset | null>(null);
 
     const defaultForm: ExpenseFormState = {
         title: '', amount: '', currency: settings.mainCurrency, category: EXPENSE_CATEGORIES[1], date: toInputDate(new Date().toISOString()), tags: [], isWorkRelated: true, isRecurring: false, recurringFrequency: 'MONTHLY', status: 'PAID', dueDay: '',
@@ -41,8 +44,32 @@ const Expenses: React.FC = () => {
     const [formData, setFormData] = useState<ExpenseFormState>(defaultForm);
 
     const handleQuickPick = (preset: ServicePreset) => {
-        setFormData({ ...formData, title: preset.name, category: preset.defaultCategory, tags: preset.defaultTags, isRecurring: preset.isRecurring, amount: '' });
+        setSelectedPreset(preset);
+        setFormData({ 
+            ...defaultForm, 
+            title: preset.name || '', 
+            category: preset.defaultCategory, 
+            tags: preset.defaultTags, 
+            isRecurring: preset.isRecurring, 
+            amount: preset.defaultAmount?.toString() || '',
+            currency: preset.defaultCurrency || settings.mainCurrency,
+        });
         setFormError('');
+        setFormStep('details');
+    };
+
+    const handleOpenForm = () => {
+        setFormData(defaultForm);
+        setFormError('');
+        setSelectedPreset(null);
+        setFormStep('pick');
+        setShowForm(true);
+    };
+
+    const handleCloseForm = () => {
+        setShowForm(false);
+        setFormStep('pick');
+        setSelectedPreset(null);
     };
 
     const handleCardClick = (expense: Expense) => {
@@ -86,7 +113,10 @@ const Expenses: React.FC = () => {
         };
 
         addExpense({ id: Date.now().toString(), ...payload });
-        setFormData(defaultForm); setShowForm(false);
+        setFormData(defaultForm); 
+        setShowForm(false);
+        setFormStep('pick');
+        setSelectedPreset(null);
     };
 
     const { recurringExpenses, variableExpenses } = useMemo(() => {
@@ -193,7 +223,7 @@ const Expenses: React.FC = () => {
                             />
                         </div>
                         <DateRangeSelect value={dateRange} onChange={setDateRange} />
-                        <Button variant="primary" onClick={() => { setFormData(defaultForm); setFormError(''); setShowForm(!showForm); }} className="h-10 px-4 text-xs shadow-neon">
+                        <Button variant="primary" onClick={handleOpenForm} className="h-10 px-4 text-xs shadow-neon">
                             <Plus size={16} /> <span className="hidden sm:inline">Nova Despesa</span>
                         </Button>
                     </div>
@@ -422,63 +452,86 @@ const Expenses: React.FC = () => {
             {/* Form Modal */}
             {showForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in zoom-in-95">
-                    <Card className="w-full max-w-lg border-white/10 max-h-[90vh] overflow-y-auto">
+                    <Card className="w-full max-w-2xl border-white/10 max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-black text-white">Nova Despesa</h3>
-                            <button onClick={() => setShowForm(false)} className="p-2 rounded-full hover:bg-white/10"><X size={20} /></button>
-                        </div>
-                        {formError && <div className="mb-6 p-3 bg-semantic-red/10 border border-semantic-red/30 rounded-xl flex items-center gap-2 text-semantic-red font-bold text-sm"><AlertTriangle size={16} /> {formError}</div>}
-
-                        <div className="flex gap-2 overflow-x-auto pb-4 mb-4 no-scrollbar">
-                            {SERVICE_PRESETS.slice(0, 6).map(preset => (
-                                <button key={preset.id} type="button" onClick={() => handleQuickPick(preset)} className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors whitespace-nowrap border border-white/5">
-                                    <IconMapper name={preset.iconName} size={14} /> <span className="text-xs font-bold">{preset.name}</span>
-                                </button>
-                            ))}
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <Input label="Título" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} autoFocus />
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input label="Valor" type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} />
-                                <Select label="Moeda" value={formData.currency} onChange={e => setFormData({ ...formData, currency: e.target.value as Currency })}>{Object.values(Currency).map(c => <option className="bg-black" key={c} value={c}>{c}</option>)}</Select>
+                            <div className="flex items-center gap-3">
+                                {formStep === 'details' && (
+                                    <button 
+                                        onClick={() => setFormStep('pick')} 
+                                        className="p-2 rounded-full hover:bg-white/10 text-ink-gray hover:text-white transition-colors"
+                                    >
+                                        <ArrowLeft size={20} />
+                                    </button>
+                                )}
+                                <h3 className="text-xl font-black text-white">
+                                    {formStep === 'pick' ? 'Escolha o Serviço' : 'Nova Despesa'}
+                                </h3>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Select label="Categoria" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>{EXPENSE_CATEGORIES.map(cat => <option className="bg-black" key={cat} value={cat}>{cat}</option>)}</Select>
-                                <Input label="Data (Ref)" type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
-                            </div>
-                            <div className="flex flex-col gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-                                <div className="flex items-center gap-4">
-                                    <Toggle label="Recorrente" checked={formData.isRecurring} onChange={c => setFormData({ ...formData, isRecurring: c })} />
-                                    {formData.isRecurring && (
-                                        <select className="bg-black border border-white/20 text-white text-xs font-bold p-2 rounded-lg outline-none" value={formData.recurringFrequency} onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value as any })}>
-                                            <option value="MONTHLY">Mensal</option>
-                                            <option value="YEARLY">Anual</option>
-                                        </select>
-                                    )}
-                                </div>
-                                {formData.isRecurring && (
-                                    <div className="animate-in slide-in-from-top-2 space-y-4 pt-2 border-t border-white/10 mt-2">
-                                        <Input label="Dia Vencimento" type="number" min="1" max="31" placeholder={`Padrão: ${formData.date.split('-')[2]}`} value={formData.dueDay} onChange={e => setFormData({ ...formData, dueDay: e.target.value })} className="bg-black" />
-                                        <div className="flex items-center gap-3"><Toggle label="Teste Grátis (Trial)?" checked={formData.isTrial} onChange={c => setFormData({ ...formData, isTrial: c })} /></div>
-                                        {formData.isTrial && (
-                                            <div className="bg-semantic-yellow/10 p-3 rounded-xl border border-semantic-yellow/30">
-                                                <Input label="Fim do Teste" type="date" value={formData.trialEndDate} onChange={e => setFormData({ ...formData, trialEndDate: e.target.value })} className="bg-black border-semantic-yellow/30" />
+                            <button onClick={handleCloseForm} className="p-2 rounded-full hover:bg-white/10"><X size={20} /></button>
+                        </div>
+
+                        {formStep === 'pick' && (
+                            <QuickExpenseGrid onSelect={handleQuickPick} />
+                        )}
+
+                        {formStep === 'details' && (
+                            <>
+                                {selectedPreset && selectedPreset.domain && (
+                                    <div className="flex items-center gap-4 mb-6 p-4 bg-white/5 rounded-2xl border border-white/5">
+                                        <CompanyLogo domain={selectedPreset.domain} name={selectedPreset.name} size={56} />
+                                        <div>
+                                            <h4 className="font-bold text-white text-lg">{selectedPreset.name}</h4>
+                                            <p className="text-xs text-ink-gray">{selectedPreset.defaultCategory}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {formError && <div className="mb-6 p-3 bg-semantic-red/10 border border-semantic-red/30 rounded-xl flex items-center gap-2 text-semantic-red font-bold text-sm"><AlertTriangle size={16} /> {formError}</div>}
+
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <Input label="Título" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} autoFocus />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <Input label="Valor" type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} />
+                                        <Select label="Moeda" value={formData.currency} onChange={e => setFormData({ ...formData, currency: e.target.value as Currency })}>{Object.values(Currency).map(c => <option className="bg-black" key={c} value={c}>{c}</option>)}</Select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <Select label="Categoria" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>{EXPENSE_CATEGORIES.map(cat => <option className="bg-black" key={cat} value={cat}>{cat}</option>)}</Select>
+                                        <Input label="Data (Ref)" type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+                                    </div>
+                                    <div className="flex flex-col gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
+                                        <div className="flex items-center gap-4">
+                                            <Toggle label="Recorrente" checked={formData.isRecurring} onChange={c => setFormData({ ...formData, isRecurring: c })} />
+                                            {formData.isRecurring && (
+                                                <select className="bg-black border border-white/20 text-white text-xs font-bold p-2 rounded-lg outline-none" value={formData.recurringFrequency} onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value as any })}>
+                                                    <option value="MONTHLY">Mensal</option>
+                                                    <option value="YEARLY">Anual</option>
+                                                </select>
+                                            )}
+                                        </div>
+                                        {formData.isRecurring && (
+                                            <div className="animate-in slide-in-from-top-2 space-y-4 pt-2 border-t border-white/10 mt-2">
+                                                <Input label="Dia Vencimento" type="number" min="1" max="31" placeholder={`Padrão: ${formData.date.split('-')[2]}`} value={formData.dueDay} onChange={e => setFormData({ ...formData, dueDay: e.target.value })} className="bg-black" />
+                                                <div className="flex items-center gap-3"><Toggle label="Teste Grátis (Trial)?" checked={formData.isTrial} onChange={c => setFormData({ ...formData, isTrial: c })} /></div>
+                                                {formData.isTrial && (
+                                                    <div className="bg-semantic-yellow/10 p-3 rounded-xl border border-semantic-yellow/30">
+                                                        <Input label="Fim do Teste" type="date" value={formData.trialEndDate} onChange={e => setFormData({ ...formData, trialEndDate: e.target.value })} className="bg-black border-semantic-yellow/30" />
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
-                            {!formData.isRecurring && (
-                                <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-                                    <Select label="Status" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })}>
-                                        <option className="bg-black" value="PAID">Pago</option>
-                                        <option className="bg-black" value="PENDING">Pendente</option>
-                                    </Select>
-                                </div>
-                            )}
-                            <Button type="submit" variant="primary" className="w-full h-12 mt-4">Salvar</Button>
-                        </form>
+                                    {!formData.isRecurring && (
+                                        <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
+                                            <Select label="Status" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })}>
+                                                <option className="bg-black" value="PAID">Pago</option>
+                                                <option className="bg-black" value="PENDING">Pendente</option>
+                                            </Select>
+                                        </div>
+                                    )}
+                                    <Button type="submit" variant="primary" className="w-full h-12 mt-4">Salvar Despesa</Button>
+                                </form>
+                            </>
+                        )}
                     </Card>
                 </div>
             )}
