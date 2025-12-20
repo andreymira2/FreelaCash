@@ -98,6 +98,13 @@ FreelaCash is a financial management platform designed for freelancers, creative
 - **Tags temporais relativas**: "Hoje", "Ontem", "X dias atrás" ao invés de datas absolutas
 - **Quick actions mobile-only**: Removido grid de 4 botões do desktop, mantido apenas barra compacta no mobile
 
+### Phase 12: Date/Number Parsing Bug Fixes (December 2024)
+- **Fixed timezone bug**: Dates entered in forms were showing 1 day earlier due to UTC midnight parsing in Brazil (UTC-3)
+- **parseLocalDateToISO()**: New utility function that sets time to 12:00 when parsing date inputs, avoiding timezone shift issues
+- **toInputDate()**: Uses string substring instead of Date object to preserve legacy ISO dates without timezone conversion
+- **parseNumber()**: Accepts both comma and dot as decimal separators for Brazilian locale compatibility
+- **Backwards compatible**: Legacy dates saved at UTC midnight continue to display correctly
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
