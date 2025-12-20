@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { Button, Input, Select, Card } from '../components/ui';
@@ -7,32 +6,25 @@ import { Currency } from '../types';
 import { Rocket, ArrowRight, Camera, User } from 'lucide-react';
 
 const SetupProfile: React.FC = () => {
-    const { updateUserProfile, updateSettings } = useData();
+    const { updateUserProfile, updateSettings, userProfile } = useData();
     const navigate = useNavigate();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Redirect if already completed
-    useEffect(() => {
-        if (localStorage.getItem('freelacash_profile_completed')) {
-            navigate('/', { replace: true });
-        }
-    }, [navigate]);
-
     const [formData, setFormData] = useState({
-        name: '',
-        title: 'Design', // Default
+        name: userProfile.name !== 'Freelancer' ? userProfile.name : '',
+        title: userProfile.title || 'Design',
         currency: Currency.BRL,
         monthlyGoal: '',
-        pixKey: ''
+        pixKey: userProfile.pixKey || ''
     });
 
-    const [avatar, setAvatar] = useState<string | null>(null);
+    const [avatar, setAvatar] = useState<string | null>(userProfile.avatar || null);
+    const [saving, setSaving] = useState(false);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Limit size to 2MB for localStorage sake
         if (file.size > 2 * 1024 * 1024) {
             alert("A imagem deve ter no máximo 2MB.");
             return;
@@ -46,31 +38,28 @@ const SetupProfile: React.FC = () => {
         reader.readAsDataURL(file);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSaving(true);
 
-        // Save Data
-        updateUserProfile({
+        await updateUserProfile({
             name: formData.name || 'Freelancer',
             title: formData.title,
             avatar: avatar || undefined,
             pixKey: formData.pixKey
         });
 
-        updateSettings({
+        await updateSettings({
             mainCurrency: formData.currency,
             monthlyGoal: formData.monthlyGoal ? parseFloat(formData.monthlyGoal) : 10000
         });
 
-        // Set Flag
-        localStorage.setItem('freelacash_profile_completed', 'true');
-
-        // Go
         navigate('/');
     };
 
-    const handleSkip = () => {
-        localStorage.setItem('freelacash_profile_completed', 'skipped');
+    const handleSkip = async () => {
+        setSaving(true);
+        await updateUserProfile({ name: 'Freelancer' });
         navigate('/');
     };
 
@@ -85,7 +74,6 @@ const SetupProfile: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-base flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Background decorations */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-brand/5 rounded-full blur-[120px]"></div>
                 <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-semantic-purple/5 rounded-full blur-[100px]"></div>
@@ -100,11 +88,9 @@ const SetupProfile: React.FC = () => {
                     <p className="text-slate-400 font-medium">Prometemos que é jogo rápido.</p>
                 </div>
 
-                {/* Card Claro no Centro (Lighter than background #050505) */}
                 <Card className="border-white/10 bg-[#161616] shadow-2xl">
                     <form onSubmit={handleSubmit} className="space-y-6">
 
-                        {/* Avatar Upload */}
                         <div className="flex justify-center -mt-12 mb-4">
                             <div
                                 onClick={() => fileInputRef.current?.click()}
@@ -116,7 +102,6 @@ const SetupProfile: React.FC = () => {
                                     <User size={36} className="text-slate-500 group-hover:text-brand transition-colors" />
                                 )}
 
-                                {/* Overlay Icon */}
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <Camera size={24} className="text-white" />
                                 </div>
@@ -183,15 +168,16 @@ const SetupProfile: React.FC = () => {
                         </div>
 
                         <div className="pt-6 space-y-3">
-                            <Button type="submit" variant="primary" className="w-full h-14 text-base shadow-neon group font-extrabold tracking-wide">
-                                Começar meu painel
-                                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                            <Button type="submit" variant="primary" disabled={saving} className="w-full h-14 text-base shadow-neon group font-extrabold tracking-wide">
+                                {saving ? 'Salvando...' : 'Começar meu painel'}
+                                {!saving && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
                             </Button>
 
                             <Button
                                 type="button"
                                 variant="ghost"
                                 onClick={handleSkip}
+                                disabled={saving}
                                 className="w-full py-3 text-sm font-medium text-ink-dim hover:text-white transition-colors"
                             >
                                 Pular por enquanto
@@ -199,6 +185,10 @@ const SetupProfile: React.FC = () => {
                         </div>
                     </form>
                 </Card>
+
+                <p className="text-center text-zinc-600 text-xs mt-6">
+                    Seus dados são salvos de forma segura na nuvem
+                </p>
             </div>
         </div>
     );

@@ -1,7 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AppData, Project, ProjectStatus, WorkLog, AppSettings, Currency, UserProfile, Expense, Payment, DateRange, ProjectContractType, ProjectType, Client, PaymentStatus, ProjectAdjustment, CalendarEvent } from '../types';
 import { safeFloat } from '../utils/format';
+import { useAuth } from './AuthContext';
+import { database } from '../lib/database';
 
 interface DataContextType {
   projects: Project[];
@@ -10,47 +11,41 @@ interface DataContextType {
   settings: AppSettings;
   userProfile: UserProfile;
   dateRange: DateRange;
+  loading: boolean;
   setDateRange: (range: DateRange) => void;
 
-  // Clients
   addClient: (client: Client) => void;
   updateClient: (id: string, updates: Partial<Client>) => void;
   deleteClient: (id: string) => void;
   getOrCreateClientByName: (name: string) => Client;
   getClientById: (id: string) => Client | undefined;
 
-  // Projects
   addProject: (project: Project) => void;
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   duplicateProject: (id: string) => string | null;
 
-  // Logs & Payments
   addWorkLog: (projectId: string, log: WorkLog) => void;
   deleteWorkLog: (projectId: string, logId: string) => void;
   addPayment: (projectId: string, payment: Payment) => void;
   updatePayment: (projectId: string, payment: Payment) => void;
   deletePayment: (projectId: string, paymentId: string) => void;
 
-  // Adjustments
   addProjectAdjustment: (projectId: string, adjustment: ProjectAdjustment) => void;
 
-  // Calculations
   getProjectTotal: (project: Project, allExpenses?: Expense[]) => { gross: number; adjustments: number; net: number; paid: number; expenseTotal: number; profit: number; remaining: number };
   getFutureRecurringIncome: () => number;
   getFinancialMetrics: (start: Date, end: Date) => { income: number; expense: number; net: number; openExpense: number };
   getCalendarEvents: (month: Date) => CalendarEvent[];
 
-  // System
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   updateUserProfile: (updates: Partial<UserProfile>) => void;
   convertCurrency: (amount: number, from: Currency, to: Currency) => number;
 
-  // Expenses
   addExpense: (expense: Expense) => void;
   updateExpense: (id: string, updates: Partial<Expense>) => void;
   toggleExpensePayment: (id: string, dateReference: Date) => void;
-  bulkMarkExpenseAsPaid: (id: string, monthsStr: string[]) => void; // New
+  bulkMarkExpenseAsPaid: (id: string, monthsStr: string[]) => void;
   deleteExpense: (id: string) => void;
 
   getDateRangeFilter: () => { start: Date; end: Date };
@@ -60,8 +55,6 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
-
-const STORAGE_KEY = 'freelacash_v3_data';
 
 const DEFAULT_SETTINGS: AppSettings = {
   monthlyGoal: 10000,
@@ -90,105 +83,50 @@ const INITIAL_DATA: AppData = {
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [data, setData] = useState<AppData>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return {
-          ...INITIAL_DATA,
-          projects: parsed.projects || [],
-          clients: parsed.clients || [],
-          expenses: parsed.expenses || [],
-          settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}), taxReservePercent: parsed.settings?.taxReservePercent ?? 0 },
-          userProfile: { ...INITIAL_DATA.userProfile, ...(parsed.userProfile || {}) }
-        };
-      }
-    } catch (e) {
-      console.error("Failed to load data from storage", e);
-    }
-    return INITIAL_DATA;
-  });
-
+  const { user } = useAuth();
+  const [data, setData] = useState<AppData>(INITIAL_DATA);
+  const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>('THIS_MONTH');
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (e) {
-      console.error("Failed to save data to storage", e);
-    }
-  }, [data]);
+    const loadData = async () => {
+      if (!user) {
+        setData(INITIAL_DATA);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const [profile, settings, clients, projects, expenses] = await Promise.all([
+          database.getUserProfile(user.id),
+          database.getUserSettings(user.id),
+          database.getClients(user.id),
+          database.getProjects(user.id),
+          database.getExpenses(user.id)
+        ]);
+
+        setData({
+          userProfile: profile || INITIAL_DATA.userProfile,
+          settings: settings || DEFAULT_SETTINGS,
+          clients: clients || [],
+          projects: projects || [],
+          expenses: expenses || []
+        });
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        setData(INITIAL_DATA);
+      }
+      setLoading(false);
+    };
+
+    loadData();
+  }, [user]);
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
 
-  // --- Auto-migration: Link projects to clients ---
-  useEffect(() => {
-    const projectsNeedingMigration = data.projects.filter(p => !p.clientId && p.clientName);
-    
-    if (projectsNeedingMigration.length === 0) return;
-    
-    setData(prev => {
-      const clientMap = new Map<string, Client>();
-      
-      // Build map of existing clients by normalized name
-      prev.clients.forEach(c => {
-        clientMap.set(c.name.toLowerCase().trim(), c);
-      });
-      
-      const newClients: Client[] = [];
-      
-      // Update projects with clientId
-      const updatedProjects = prev.projects.map(project => {
-        if (project.clientId) return project; // Already migrated
-        if (!project.clientName) return project; // No client name to migrate
-        
-        const normalizedName = project.clientName.toLowerCase().trim();
-        
-        let client = clientMap.get(normalizedName);
-        
-        if (!client) {
-          // Create new client
-          client = {
-            id: `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            name: project.clientName.trim(),
-            createdAt: Date.now(),
-            firstProjectDate: project.startDate
-          };
-          clientMap.set(normalizedName, client);
-          newClients.push(client);
-        }
-        
-        // Update firstProjectDate if this project is older
-        if (client.firstProjectDate && project.startDate < client.firstProjectDate) {
-          client.firstProjectDate = project.startDate;
-        }
-        
-        // Update lastActivityDate based on latest payment
-        const latestPayment = project.payments
-          ?.filter(p => p.status === 'PAID' || !p.status)
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-        
-        if (latestPayment) {
-          if (!client.lastActivityDate || latestPayment.date > client.lastActivityDate) {
-            client.lastActivityDate = latestPayment.date;
-          }
-        }
-        
-        return { ...project, clientId: client.id };
-      });
-      
-      return {
-        ...prev,
-        projects: updatedProjects,
-        clients: [...prev.clients, ...newClients]
-      };
-    });
-  }, []); // Run once on mount
-
-  // --- Date Helpers ---
   const getDateRangeFilter = useCallback(() => {
     const start = new Date();
     const end = new Date();
@@ -218,34 +156,52 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { start, end };
   }, [dateRange]);
 
-  // --- CRUD Operations ---
-
-  const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
+  const updateSettings = useCallback(async (newSettings: Partial<AppSettings>) => {
     setData(prev => ({ ...prev, settings: { ...prev.settings, ...newSettings } }));
-  }, []);
+    if (user) {
+      await database.updateUserSettings(user.id, { ...data.settings, ...newSettings });
+    }
+  }, [user, data.settings]);
 
-  const updateUserProfile = useCallback((updates: Partial<UserProfile>) => {
+  const updateUserProfile = useCallback(async (updates: Partial<UserProfile>) => {
     setData(prev => ({ ...prev, userProfile: { ...prev.userProfile, ...updates } }));
-  }, []);
+    if (user) {
+      await database.updateUserProfile(user.id, { ...data.userProfile, ...updates });
+    }
+  }, [user, data.userProfile]);
 
-  // Clients
-  const addClient = useCallback((client: Client) => {
+  const addClient = useCallback(async (client: Client) => {
     setData(prev => ({ ...prev, clients: [client, ...prev.clients] }));
-  }, []);
+    if (user) {
+      const newId = await database.addClient(user.id, client);
+      if (newId && newId !== client.id) {
+        setData(prev => ({
+          ...prev,
+          clients: prev.clients.map(c => c.id === client.id ? { ...c, id: newId } : c)
+        }));
+      }
+    }
+  }, [user]);
 
-  const updateClient = useCallback((id: string, updates: Partial<Client>) => {
+  const updateClient = useCallback(async (id: string, updates: Partial<Client>) => {
     setData(prev => ({
       ...prev,
       clients: prev.clients.map(c => c.id === id ? { ...c, ...updates } : c)
     }));
-  }, []);
+    if (user) {
+      await database.updateClient(user.id, id, updates);
+    }
+  }, [user]);
 
-  const deleteClient = useCallback((id: string) => {
+  const deleteClient = useCallback(async (id: string) => {
     setData(prev => ({
       ...prev,
       clients: prev.clients.filter(c => c.id !== id)
     }));
-  }, []);
+    if (user) {
+      await database.deleteClient(user.id, id);
+    }
+  }, [user]);
 
   const getClientById = useCallback((id: string): Client | undefined => {
     return data.clients.find(c => c.id === id);
@@ -255,43 +211,51 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const trimmedName = name.trim();
     const normalizedName = trimmedName.toLowerCase();
     
-    // Try to find existing client by name (case-insensitive)
     const existing = data.clients.find(c => c.name.toLowerCase() === normalizedName);
     if (existing) return existing;
     
-    // Create new client
     const newClient: Client = {
       id: `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: trimmedName,
       createdAt: Date.now()
     };
     
-    // Add to state
-    setData(prev => ({ ...prev, clients: [newClient, ...prev.clients] }));
-    
+    addClient(newClient);
     return newClient;
-  }, [data.clients]);
+  }, [data.clients, addClient]);
 
-  // Projects
-  const addProject = useCallback((project: Project) => {
-    setData(prev => {
-      return { ...prev, projects: [project, ...prev.projects] };
-    });
-  }, []);
+  const addProject = useCallback(async (project: Project) => {
+    setData(prev => ({ ...prev, projects: [project, ...prev.projects] }));
+    if (user) {
+      const newId = await database.addProject(user.id, project);
+      if (newId && newId !== project.id) {
+        setData(prev => ({
+          ...prev,
+          projects: prev.projects.map(p => p.id === project.id ? { ...p, id: newId } : p)
+        }));
+      }
+    }
+  }, [user]);
 
-  const updateProject = useCallback((id: string, updates: Partial<Project>) => {
+  const updateProject = useCallback(async (id: string, updates: Partial<Project>) => {
     setData(prev => ({
       ...prev,
       projects: prev.projects.map(p => p.id === id ? { ...p, ...updates } : p)
     }));
-  }, []);
+    if (user) {
+      await database.updateProject(user.id, id, updates);
+    }
+  }, [user]);
 
-  const deleteProject = useCallback((id: string) => {
+  const deleteProject = useCallback(async (id: string) => {
     setData(prev => ({
       ...prev,
       projects: prev.projects.filter(p => p.id !== id)
     }));
-  }, []);
+    if (user) {
+      await database.deleteProject(user.id, id);
+    }
+  }, [user]);
 
   const duplicateProject = useCallback((id: string): string | null => {
     const newId = Date.now().toString();
@@ -319,29 +283,38 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })),
         status: ProjectStatus.ACTIVE,
       };
+
+      if (user) {
+        database.addProject(user.id, duplicated);
+      }
       
       return { ...prev, projects: [duplicated, ...prev.projects] };
     });
     
     return foundOriginal ? newId : null;
-  }, []);
+  }, [user]);
 
-  // Components
-  const addWorkLog = useCallback((projectId: string, log: WorkLog) => {
+  const addWorkLog = useCallback(async (projectId: string, log: WorkLog) => {
     setData(prev => ({
       ...prev,
       projects: prev.projects.map(p => p.id === projectId ? { ...p, logs: [...p.logs, log] } : p)
     }));
-  }, []);
+    if (user) {
+      await database.addWorkLog(user.id, projectId, log);
+    }
+  }, [user]);
 
-  const deleteWorkLog = useCallback((projectId: string, logId: string) => {
+  const deleteWorkLog = useCallback(async (projectId: string, logId: string) => {
     setData(prev => ({
       ...prev,
       projects: prev.projects.map(p => p.id === projectId ? { ...p, logs: p.logs.filter(l => l.id !== logId) } : p)
     }));
-  }, []);
+    if (user) {
+      await database.deleteWorkLog(user.id, logId);
+    }
+  }, [user]);
 
-  const addPayment = useCallback((projectId: string, payment: Payment) => {
+  const addPayment = useCallback(async (projectId: string, payment: Payment) => {
     setData(prev => ({
       ...prev,
       projects: prev.projects.map(p => {
@@ -351,9 +324,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return p;
       })
     }));
-  }, []);
+    if (user) {
+      await database.addPayment(user.id, projectId, payment);
+    }
+  }, [user]);
 
-  const updatePayment = useCallback((projectId: string, payment: Payment) => {
+  const updatePayment = useCallback(async (projectId: string, payment: Payment) => {
     setData(prev => ({
       ...prev,
       projects: prev.projects.map(p => {
@@ -366,9 +342,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return p;
       })
     }));
-  }, []);
+    if (user) {
+      await database.updatePayment(user.id, payment.id, payment);
+    }
+  }, [user]);
 
-  const deletePayment = useCallback((projectId: string, paymentId: string) => {
+  const deletePayment = useCallback(async (projectId: string, paymentId: string) => {
     setData(prev => ({
       ...prev,
       projects: prev.projects.map(p => {
@@ -378,9 +357,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return p;
       })
     }));
-  }, []);
+    if (user) {
+      await database.deletePayment(user.id, paymentId);
+    }
+  }, [user]);
 
-  const addProjectAdjustment = useCallback((projectId: string, adjustment: ProjectAdjustment) => {
+  const addProjectAdjustment = useCallback(async (projectId: string, adjustment: ProjectAdjustment) => {
     setData(prev => ({
       ...prev,
       projects: prev.projects.map(p => {
@@ -390,22 +372,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return p;
       })
     }));
-  }, []);
+    if (user) {
+      await database.addProjectAdjustment(user.id, projectId, adjustment);
+    }
+  }, [user]);
 
-  // Expense Management
-  const addExpense = useCallback((expense: Expense) => {
+  const addExpense = useCallback(async (expense: Expense) => {
     setData(prev => ({ ...prev, expenses: [expense, ...prev.expenses] }));
-  }, []);
+    if (user) {
+      const newId = await database.addExpense(user.id, expense);
+      if (newId && newId !== expense.id) {
+        setData(prev => ({
+          ...prev,
+          expenses: prev.expenses.map(e => e.id === expense.id ? { ...e, id: newId } : e)
+        }));
+      }
+    }
+  }, [user]);
 
-  const updateExpense = useCallback((id: string, updates: Partial<Expense>) => {
+  const updateExpense = useCallback(async (id: string, updates: Partial<Expense>) => {
     setData(prev => ({
       ...prev,
       expenses: prev.expenses.map(e => e.id === id ? { ...e, ...updates } : e)
     }));
-  }, []);
+    if (user) {
+      await database.updateExpense(user.id, id, updates);
+    }
+  }, [user]);
 
-  // Toggle payment status for a specific month (recurring) or globally (one-off)
-  const toggleExpensePayment = useCallback((id: string, dateReference: Date) => {
+  const toggleExpensePayment = useCallback(async (id: string, dateReference: Date) => {
+    let updatedExpense: Expense | undefined;
+    
     setData(prev => ({
       ...prev,
       expenses: prev.expenses.map(e => {
@@ -417,12 +414,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const monthStr = `${year}-${month.toString().padStart(2, '0')}`;
 
           const history = e.paymentHistory || [];
-
           const existingIndex = history.findIndex(h => h.monthStr === monthStr);
           let newHistory = [...history];
 
           if (existingIndex >= 0 && history[existingIndex].status === 'PAID') {
-            newHistory.splice(existingIndex, 1); // Unpay
+            newHistory.splice(existingIndex, 1);
           } else {
             const newEntry = { monthStr, status: 'PAID' as const, paidDate: new Date().toISOString() };
             if (existingIndex >= 0) {
@@ -431,15 +427,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               newHistory.push(newEntry);
             }
           }
-          return { ...e, paymentHistory: newHistory };
+          updatedExpense = { ...e, paymentHistory: newHistory };
+          return updatedExpense;
         } else {
-          return { ...e, status: e.status === 'PAID' ? 'PENDING' : 'PAID' };
+          updatedExpense = { ...e, status: e.status === 'PAID' ? 'PENDING' : 'PAID' };
+          return updatedExpense;
         }
       })
     }));
-  }, []);
 
-  const bulkMarkExpenseAsPaid = useCallback((id: string, monthsStr: string[]) => {
+    if (user && updatedExpense) {
+      await database.updateExpense(user.id, id, updatedExpense);
+    }
+  }, [user]);
+
+  const bulkMarkExpenseAsPaid = useCallback(async (id: string, monthsStr: string[]) => {
+    let updatedExpense: Expense | undefined;
+
     setData(prev => ({
       ...prev,
       expenses: prev.expenses.map(e => {
@@ -452,19 +456,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .map(m => ({ monthStr: m, status: 'PAID' as const, paidDate: new Date().toISOString() }));
 
         const updatedHistory = [...currentHistory, ...newEntries];
-        return { ...e, paymentHistory: updatedHistory };
+        updatedExpense = { ...e, paymentHistory: updatedHistory };
+        return updatedExpense;
       })
     }));
-  }, []);
 
-  const deleteExpense = useCallback((id: string) => {
+    if (user && updatedExpense) {
+      await database.updateExpense(user.id, id, { paymentHistory: updatedExpense.paymentHistory });
+    }
+  }, [user]);
+
+  const deleteExpense = useCallback(async (id: string) => {
     setData(prev => ({
       ...prev,
       expenses: prev.expenses.filter(e => e.id !== id)
     }));
-  }, []);
-
-  // --- Calculations ---
+    if (user) {
+      await database.deleteExpense(user.id, id);
+    }
+  }, [user]);
 
   const convertCurrency = useCallback((amount: number, from: Currency, to: Currency) => {
     if (from === to) return amount;
@@ -479,7 +489,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return safeFloat(inBase / rateTo);
   }, [data.settings.exchangeRates]);
 
-  /** @deprecated Use useProjectFinancials from hooks/useFinancialEngine instead */
   const getProjectTotal = useCallback((project: Project, allExpenses?: Expense[]) => {
     let baseRate = 0;
     const rate = isNaN(project.rate) ? 0 : project.rate;
@@ -542,16 +551,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return total;
   }, [data.projects, data.settings.mainCurrency, convertCurrency]);
 
-  // IMPORTANT: Financial Engine Correction
-  // Previous version only checked "current month" relative to start date.
-  // New version iterates through actual paymentHistory to sum correct historical amounts.
   const getFinancialMetrics = useCallback((start: Date, end: Date) => {
     let income = 0;
     let expense = 0;
     let openExpense = 0;
     const targetCurrency = data.settings.mainCurrency;
 
-    // 1. Income (Strictly PAID payments within date range)
     data.projects.forEach(p => {
       if (p.payments?.length) {
         p.payments.forEach(pay => {
@@ -563,20 +568,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // 2. Expenses (Handles One-Off Dates AND Recurring History)
     data.expenses.forEach(e => {
       const val = convertCurrency(e.amount, e.currency, targetCurrency);
 
       if (e.isRecurring) {
-        // Check History for PAID entries that fall within start/end range
-        // We reconstruct the date from the monthStr (YYYY-MM) + dueDay
         const history = e.paymentHistory || [];
 
         history.forEach(h => {
           if (h.status === 'PAID') {
             const [year, month] = h.monthStr.split('-').map(Number);
-            // Use the 15th of the month as a safe "payment date" approximation for the filter range
-            // or use the dueDay if available
             const paymentDate = new Date(year, month - 1, e.dueDay || 15);
 
             if (paymentDate >= start && paymentDate <= end) {
@@ -585,14 +585,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         });
 
-        // For open expenses calculation (approximate for current month/range)
-        // If the range includes "today", we check if current month is paid
         const today = new Date();
         if (today >= start && today <= end) {
           const currentMonthStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
           const isPaidNow = history.some(h => h.monthStr === currentMonthStr && h.status === 'PAID');
-
-          // Only consider it "open" if trial is not active
           const isTrialActive = e.isTrial && e.trialEndDate && new Date(e.trialEndDate) > today;
 
           if (!isPaidNow && !isTrialActive) {
@@ -601,7 +597,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
       } else {
-        // One-off
         const d = new Date(e.date);
         if (d >= start && d <= end) {
           if (e.status === 'PAID') {
@@ -622,7 +617,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const month = monthDate.getMonth();
     const targetCurrency = data.settings.mainCurrency;
 
-    // 1. Project Starts & Dues
     data.projects.forEach(p => {
       const start = new Date(p.startDate);
       if (start.getFullYear() === year && start.getMonth() === month) {
@@ -636,7 +630,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // 2. Incoming Payments
     data.projects.forEach(p => {
       p.payments?.forEach(pay => {
         const d = new Date(pay.date);
@@ -654,7 +647,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     });
 
-    // 3. Expenses
     const monthStr = monthDate.toISOString().slice(0, 7);
 
     data.expenses.forEach(e => {
@@ -730,10 +722,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [data]);
 
   const loadDemoData = useCallback(() => {
-    // Keep existing demo logic (omitted for brevity as it's large and unchanged logic)
-    const now = new Date();
-    // ... (Implementation same as previous version)
-    // For brevity, assuming simple reset:
     setData({ ...INITIAL_DATA, settings: DEFAULT_SETTINGS });
     window.location.reload();
   }, []);
@@ -746,6 +734,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       settings: data.settings,
       userProfile: data.userProfile,
       dateRange,
+      loading,
       setDateRange,
       addClient, updateClient, deleteClient, getOrCreateClientByName, getClientById,
       addProject, updateProject, deleteProject, duplicateProject,
