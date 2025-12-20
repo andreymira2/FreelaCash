@@ -201,27 +201,26 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
 };
 
 export const EXPENSE_CATEGORIES = [
-  'Assinaturas / Subs',
-  'Software & Tools',
-  'IA & Automação',
-  'Streaming / Lazer',
-  'Escritório / Home Office',
+  'Moradia',
+  'Contas Fixas',
+  'Alimentação',
+  'Ferramentas',
   'Transporte',
-  'Alimentação / Café',
+  'Lazer',
   'Equipamentos',
   'Impostos & Taxas',
   'Outros'
 ] as const;
 
 export const TAG_SUGGESTIONS: Record<string, string[]> = {
-  'Streaming / Lazer': ['Netflix', 'Spotify', 'Disney+', 'Prime Video', 'YouTube Premium'],
-  'Software & Tools': ['Adobe CC', 'Figma', 'Notion', 'Google Workspace', 'Microsoft 365', 'Canva', 'Zoom', 'Trello'],
-  'IA & Automação': ['ChatGPT', 'Midjourney', 'Gemini', 'Claude', 'Runway', 'ElevenLabs'],
+  'Moradia': ['Aluguel', 'Condomínio', 'IPTU', 'Seguro'],
+  'Contas Fixas': ['Luz', 'Água', 'Gás', 'Internet', 'Celular', 'Telefone'],
+  'Alimentação': ['Mercado', 'Delivery', 'iFood', 'Restaurante', 'Café'],
+  'Ferramentas': ['Adobe', 'Figma', 'Hosting', 'Domínio', 'ChatGPT', 'Notion'],
   'Transporte': ['Uber', '99', 'Gasolina', 'Estacionamento', 'Transporte Público'],
-  'Alimentação / Café': ['Delivery', 'iFood', 'Starbucks', 'Almoço', 'Jantar'],
-  'Assinaturas / Subs': ['Domínio', 'Hospedagem', 'VPN', 'Cloud'],
-  'Escritório / Home Office': ['Internet', 'Limpeza', 'Decoração'],
-  'Impostos & Taxas': ['MEI', 'Simples', 'DAS']
+  'Lazer': ['Netflix', 'Spotify', 'Disney+', 'Jogos', 'Cinema'],
+  'Equipamentos': ['Notebook', 'Monitor', 'Teclado', 'Mouse', 'Headset'],
+  'Impostos & Taxas': ['MEI', 'Simples', 'DAS', 'INSS']
 };
 
 // --- New: Service Presets for Expenses ---
@@ -239,56 +238,65 @@ export interface ServicePreset {
 }
 
 export const SERVICE_PRESETS: ServicePreset[] = [
-  { id: 'netflix', name: 'Netflix', domain: 'netflix.com', defaultCategory: 'Streaming / Lazer', defaultTags: ['Streaming'], isRecurring: true, defaultAmount: 55.90, defaultCurrency: Currency.BRL, iconName: 'Tv' },
-  { id: 'spotify', name: 'Spotify', domain: 'spotify.com', defaultCategory: 'Streaming / Lazer', defaultTags: ['Música'], isRecurring: true, defaultAmount: 21.90, defaultCurrency: Currency.BRL, iconName: 'Music' },
-  { id: 'disney', name: 'Disney+', domain: 'disneyplus.com', defaultCategory: 'Streaming / Lazer', defaultTags: ['Streaming'], isRecurring: true, defaultAmount: 43.90, defaultCurrency: Currency.BRL, iconName: 'Tv' },
-  { id: 'prime', name: 'Prime Video', domain: 'primevideo.com', defaultCategory: 'Streaming / Lazer', defaultTags: ['Streaming'], isRecurring: true, defaultAmount: 19.90, defaultCurrency: Currency.BRL, iconName: 'Tv' },
-  { id: 'youtube', name: 'YouTube Premium', domain: 'youtube.com', defaultCategory: 'Streaming / Lazer', defaultTags: ['Streaming'], isRecurring: true, defaultAmount: 24.90, defaultCurrency: Currency.BRL, iconName: 'Play' },
-  { id: 'hbo', name: 'Max (HBO)', domain: 'max.com', defaultCategory: 'Streaming / Lazer', defaultTags: ['Streaming'], isRecurring: true, defaultAmount: 34.90, defaultCurrency: Currency.BRL, iconName: 'Tv' },
-  { id: 'adobe', name: 'Adobe CC', domain: 'adobe.com', defaultCategory: 'Software & Tools', defaultTags: ['Design', 'Criativo'], isRecurring: true, defaultAmount: 290, defaultCurrency: Currency.BRL, iconName: 'PenTool' },
-  { id: 'figma', name: 'Figma', domain: 'figma.com', defaultCategory: 'Software & Tools', defaultTags: ['Design', 'UI/UX'], isRecurring: true, defaultAmount: 15, defaultCurrency: Currency.USD, iconName: 'Figma' },
-  { id: 'canva', name: 'Canva Pro', domain: 'canva.com', defaultCategory: 'Software & Tools', defaultTags: ['Design'], isRecurring: true, defaultAmount: 54.99, defaultCurrency: Currency.BRL, iconName: 'Palette' },
-  { id: 'notion', name: 'Notion', domain: 'notion.so', defaultCategory: 'Software & Tools', defaultTags: ['Produtividade'], isRecurring: true, defaultAmount: 10, defaultCurrency: Currency.USD, iconName: 'FileText' },
-  { id: 'chatgpt', name: 'ChatGPT Plus', domain: 'openai.com', defaultCategory: 'IA & Automação', defaultTags: ['IA', 'Produtividade'], isRecurring: true, defaultAmount: 20, defaultCurrency: Currency.USD, iconName: 'Sparkles' },
-  { id: 'claude', name: 'Claude Pro', domain: 'anthropic.com', defaultCategory: 'IA & Automação', defaultTags: ['IA'], isRecurring: true, defaultAmount: 20, defaultCurrency: Currency.USD, iconName: 'Brain' },
-  { id: 'midjourney', name: 'Midjourney', domain: 'midjourney.com', defaultCategory: 'IA & Automação', defaultTags: ['IA', 'Arte'], isRecurring: true, defaultAmount: 10, defaultCurrency: Currency.USD, iconName: 'Image' },
-  { id: 'google', name: 'Google Workspace', domain: 'google.com', defaultCategory: 'Software & Tools', defaultTags: ['Email', 'Drive'], isRecurring: true, defaultAmount: 28, defaultCurrency: Currency.BRL, iconName: 'Cloud' },
-  { id: 'microsoft', name: 'Microsoft 365', domain: 'microsoft.com', defaultCategory: 'Software & Tools', defaultTags: ['Office'], isRecurring: true, defaultAmount: 45, defaultCurrency: Currency.BRL, iconName: 'Grid' },
-  { id: 'dropbox', name: 'Dropbox', domain: 'dropbox.com', defaultCategory: 'Software & Tools', defaultTags: ['Cloud', 'Storage'], isRecurring: true, defaultAmount: 11.99, defaultCurrency: Currency.USD, iconName: 'Cloud' },
-  { id: 'slack', name: 'Slack', domain: 'slack.com', defaultCategory: 'Software & Tools', defaultTags: ['Comunicação'], isRecurring: true, defaultAmount: 8.75, defaultCurrency: Currency.USD, iconName: 'MessageSquare' },
-  { id: 'zoom', name: 'Zoom', domain: 'zoom.us', defaultCategory: 'Software & Tools', defaultTags: ['Reuniões'], isRecurring: true, defaultAmount: 15.99, defaultCurrency: Currency.USD, iconName: 'Video' },
-  { id: 'github', name: 'GitHub Pro', domain: 'github.com', defaultCategory: 'Software & Tools', defaultTags: ['Dev'], isRecurring: true, defaultAmount: 4, defaultCurrency: Currency.USD, iconName: 'Github' },
-  { id: 'vercel', name: 'Vercel', domain: 'vercel.com', defaultCategory: 'Assinaturas / Subs', defaultTags: ['Servidor', 'Infra'], isRecurring: true, defaultAmount: 20, defaultCurrency: Currency.USD, iconName: 'Server' },
-  { id: 'aws', name: 'AWS', domain: 'aws.amazon.com', defaultCategory: 'Assinaturas / Subs', defaultTags: ['Servidor', 'Infra'], isRecurring: true, iconName: 'Server' },
-  { id: 'heroku', name: 'Heroku', domain: 'heroku.com', defaultCategory: 'Assinaturas / Subs', defaultTags: ['Servidor', 'Infra'], isRecurring: true, iconName: 'Server' },
-  { id: 'digitalocean', name: 'DigitalOcean', domain: 'digitalocean.com', defaultCategory: 'Assinaturas / Subs', defaultTags: ['Servidor', 'Infra'], isRecurring: true, iconName: 'Server' },
+  // MORADIA
+  { id: 'aluguel', name: 'Aluguel', domain: '', defaultCategory: 'Moradia', defaultTags: ['Moradia'], isRecurring: true, iconName: 'Home' },
+  { id: 'condominio', name: 'Condomínio', domain: '', defaultCategory: 'Moradia', defaultTags: ['Moradia'], isRecurring: true, iconName: 'Building2' },
+  { id: 'iptu', name: 'IPTU', domain: '', defaultCategory: 'Moradia', defaultTags: ['Imposto'], isRecurring: true, iconName: 'FileText' },
+  
+  // CONTAS FIXAS
+  { id: 'luz', name: 'Conta de Luz', domain: '', defaultCategory: 'Contas Fixas', defaultTags: ['Energia'], isRecurring: true, iconName: 'Zap' },
+  { id: 'agua', name: 'Conta de Água', domain: '', defaultCategory: 'Contas Fixas', defaultTags: ['Água'], isRecurring: true, iconName: 'Droplet' },
+  { id: 'gas', name: 'Gás', domain: '', defaultCategory: 'Contas Fixas', defaultTags: ['Gás'], isRecurring: true, iconName: 'Flame' },
+  { id: 'internet', name: 'Internet', domain: '', defaultCategory: 'Contas Fixas', defaultTags: ['Internet'], isRecurring: true, iconName: 'Wifi' },
+  { id: 'celular', name: 'Celular', domain: '', defaultCategory: 'Contas Fixas', defaultTags: ['Telefone'], isRecurring: true, iconName: 'Smartphone' },
+  
+  // ALIMENTAÇÃO
+  { id: 'mercado', name: 'Mercado', domain: '', defaultCategory: 'Alimentação', defaultTags: ['Compras'], isRecurring: false, iconName: 'ShoppingCart' },
+  { id: 'ifood', name: 'iFood', domain: 'ifood.com.br', defaultCategory: 'Alimentação', defaultTags: ['Delivery'], isRecurring: false, iconName: 'UtensilsCrossed' },
+  { id: 'rappi', name: 'Rappi', domain: 'rappi.com.br', defaultCategory: 'Alimentação', defaultTags: ['Delivery'], isRecurring: false, iconName: 'UtensilsCrossed' },
+  { id: 'restaurante', name: 'Restaurante', domain: '', defaultCategory: 'Alimentação', defaultTags: ['Refeição'], isRecurring: false, iconName: 'UtensilsCrossed' },
+  { id: 'cafe', name: 'Café', domain: '', defaultCategory: 'Alimentação', defaultTags: ['Café'], isRecurring: false, iconName: 'Coffee' },
+  
+  // FERRAMENTAS (trabalho)
+  { id: 'adobe', name: 'Adobe CC', domain: 'adobe.com', defaultCategory: 'Ferramentas', defaultTags: ['Design'], isRecurring: true, defaultAmount: 290, defaultCurrency: Currency.BRL, iconName: 'PenTool' },
+  { id: 'figma', name: 'Figma', domain: 'figma.com', defaultCategory: 'Ferramentas', defaultTags: ['Design'], isRecurring: true, defaultAmount: 15, defaultCurrency: Currency.USD, iconName: 'Figma' },
+  { id: 'canva', name: 'Canva Pro', domain: 'canva.com', defaultCategory: 'Ferramentas', defaultTags: ['Design'], isRecurring: true, defaultAmount: 54.99, defaultCurrency: Currency.BRL, iconName: 'Palette' },
+  { id: 'notion', name: 'Notion', domain: 'notion.so', defaultCategory: 'Ferramentas', defaultTags: ['Produtividade'], isRecurring: true, defaultAmount: 10, defaultCurrency: Currency.USD, iconName: 'FileText' },
+  { id: 'chatgpt', name: 'ChatGPT Plus', domain: 'openai.com', defaultCategory: 'Ferramentas', defaultTags: ['IA'], isRecurring: true, defaultAmount: 20, defaultCurrency: Currency.USD, iconName: 'Sparkles' },
+  { id: 'claude', name: 'Claude Pro', domain: 'anthropic.com', defaultCategory: 'Ferramentas', defaultTags: ['IA'], isRecurring: true, defaultAmount: 20, defaultCurrency: Currency.USD, iconName: 'Brain' },
+  { id: 'midjourney', name: 'Midjourney', domain: 'midjourney.com', defaultCategory: 'Ferramentas', defaultTags: ['IA'], isRecurring: true, defaultAmount: 10, defaultCurrency: Currency.USD, iconName: 'Image' },
+  { id: 'google', name: 'Google Workspace', domain: 'google.com', defaultCategory: 'Ferramentas', defaultTags: ['Email'], isRecurring: true, defaultAmount: 28, defaultCurrency: Currency.BRL, iconName: 'Cloud' },
+  { id: 'github', name: 'GitHub Pro', domain: 'github.com', defaultCategory: 'Ferramentas', defaultTags: ['Dev'], isRecurring: true, defaultAmount: 4, defaultCurrency: Currency.USD, iconName: 'Github' },
+  { id: 'vercel', name: 'Vercel', domain: 'vercel.com', defaultCategory: 'Ferramentas', defaultTags: ['Hosting'], isRecurring: true, defaultAmount: 20, defaultCurrency: Currency.USD, iconName: 'Server' },
+  { id: 'hostgator', name: 'HostGator', domain: 'hostgator.com.br', defaultCategory: 'Ferramentas', defaultTags: ['Hospedagem'], isRecurring: true, iconName: 'Server' },
+  { id: 'godaddy', name: 'GoDaddy', domain: 'godaddy.com', defaultCategory: 'Ferramentas', defaultTags: ['Domínio'], isRecurring: true, iconName: 'Globe' },
+  { id: 'zoom', name: 'Zoom', domain: 'zoom.us', defaultCategory: 'Ferramentas', defaultTags: ['Reuniões'], isRecurring: true, defaultAmount: 15.99, defaultCurrency: Currency.USD, iconName: 'Video' },
+  { id: 'slack', name: 'Slack', domain: 'slack.com', defaultCategory: 'Ferramentas', defaultTags: ['Comunicação'], isRecurring: true, defaultAmount: 8.75, defaultCurrency: Currency.USD, iconName: 'MessageSquare' },
+  
+  // TRANSPORTE
   { id: 'uber', name: 'Uber', domain: 'uber.com', defaultCategory: 'Transporte', defaultTags: ['Corrida'], isRecurring: false, iconName: 'Car' },
   { id: '99', name: '99', domain: '99app.com', defaultCategory: 'Transporte', defaultTags: ['Corrida'], isRecurring: false, iconName: 'Car' },
-  { id: 'ifood', name: 'iFood', domain: 'ifood.com.br', defaultCategory: 'Alimentação / Café', defaultTags: ['Delivery'], isRecurring: false, iconName: 'UtensilsCrossed' },
-  { id: 'rappi', name: 'Rappi', domain: 'rappi.com.br', defaultCategory: 'Alimentação / Café', defaultTags: ['Delivery'], isRecurring: false, iconName: 'UtensilsCrossed' },
-  { id: 'starbucks', name: 'Starbucks', domain: 'starbucks.com', defaultCategory: 'Alimentação / Café', defaultTags: ['Café'], isRecurring: false, iconName: 'Coffee' },
-  { id: 'nordvpn', name: 'NordVPN', domain: 'nordvpn.com', defaultCategory: 'Software & Tools', defaultTags: ['VPN', 'Segurança'], isRecurring: true, defaultAmount: 12.99, defaultCurrency: Currency.USD, iconName: 'Shield' },
-  { id: '1password', name: '1Password', domain: '1password.com', defaultCategory: 'Software & Tools', defaultTags: ['Segurança'], isRecurring: true, defaultAmount: 2.99, defaultCurrency: Currency.USD, iconName: 'Key' },
-  { id: 'hostgator', name: 'HostGator', domain: 'hostgator.com.br', defaultCategory: 'Assinaturas / Subs', defaultTags: ['Hospedagem'], isRecurring: true, iconName: 'Server' },
-  { id: 'godaddy', name: 'GoDaddy', domain: 'godaddy.com', defaultCategory: 'Assinaturas / Subs', defaultTags: ['Domínio'], isRecurring: true, iconName: 'Globe' },
-  { id: 'linear', name: 'Linear', domain: 'linear.app', defaultCategory: 'Software & Tools', defaultTags: ['Produtividade', 'Dev'], isRecurring: true, defaultAmount: 8, defaultCurrency: Currency.USD, iconName: 'Layers' },
-  { id: 'miro', name: 'Miro', domain: 'miro.com', defaultCategory: 'Software & Tools', defaultTags: ['Colaboração'], isRecurring: true, defaultAmount: 8, defaultCurrency: Currency.USD, iconName: 'PenTool' },
-  { id: 'trello', name: 'Trello', domain: 'trello.com', defaultCategory: 'Software & Tools', defaultTags: ['Produtividade'], isRecurring: true, defaultAmount: 5, defaultCurrency: Currency.USD, iconName: 'Columns' },
-  { id: 'asana', name: 'Asana', domain: 'asana.com', defaultCategory: 'Software & Tools', defaultTags: ['Produtividade'], isRecurring: true, defaultAmount: 10.99, defaultCurrency: Currency.USD, iconName: 'CheckSquare' },
-  { id: 'loom', name: 'Loom', domain: 'loom.com', defaultCategory: 'Software & Tools', defaultTags: ['Comunicação'], isRecurring: true, defaultAmount: 12.50, defaultCurrency: Currency.USD, iconName: 'Video' },
-  { id: 'grammarly', name: 'Grammarly', domain: 'grammarly.com', defaultCategory: 'Software & Tools', defaultTags: ['Escrita'], isRecurring: true, defaultAmount: 12, defaultCurrency: Currency.USD, iconName: 'Check' },
-  { id: 'envato', name: 'Envato Elements', domain: 'elements.envato.com', defaultCategory: 'Software & Tools', defaultTags: ['Design', 'Assets'], isRecurring: true, defaultAmount: 16.50, defaultCurrency: Currency.USD, iconName: 'Layers' },
-  { id: 'shutterstock', name: 'Shutterstock', domain: 'shutterstock.com', defaultCategory: 'Software & Tools', defaultTags: ['Fotos', 'Assets'], isRecurring: true, defaultAmount: 29, defaultCurrency: Currency.USD, iconName: 'Image' },
+  { id: 'gasolina', name: 'Gasolina', domain: '', defaultCategory: 'Transporte', defaultTags: ['Combustível'], isRecurring: false, iconName: 'Fuel' },
+  { id: 'estacionamento', name: 'Estacionamento', domain: '', defaultCategory: 'Transporte', defaultTags: ['Estacionamento'], isRecurring: false, iconName: 'ParkingCircle' },
+  
+  // LAZER (streaming, jogos - menor prioridade)
+  { id: 'netflix', name: 'Netflix', domain: 'netflix.com', defaultCategory: 'Lazer', defaultTags: ['Streaming'], isRecurring: true, defaultAmount: 55.90, defaultCurrency: Currency.BRL, iconName: 'Tv' },
+  { id: 'spotify', name: 'Spotify', domain: 'spotify.com', defaultCategory: 'Lazer', defaultTags: ['Música'], isRecurring: true, defaultAmount: 21.90, defaultCurrency: Currency.BRL, iconName: 'Music' },
+  { id: 'disney', name: 'Disney+', domain: 'disneyplus.com', defaultCategory: 'Lazer', defaultTags: ['Streaming'], isRecurring: true, defaultAmount: 43.90, defaultCurrency: Currency.BRL, iconName: 'Tv' },
+  { id: 'prime', name: 'Prime Video', domain: 'primevideo.com', defaultCategory: 'Lazer', defaultTags: ['Streaming'], isRecurring: true, defaultAmount: 19.90, defaultCurrency: Currency.BRL, iconName: 'Tv' },
+  { id: 'youtube', name: 'YouTube Premium', domain: 'youtube.com', defaultCategory: 'Lazer', defaultTags: ['Streaming'], isRecurring: true, defaultAmount: 24.90, defaultCurrency: Currency.BRL, iconName: 'Play' },
+  { id: 'hbo', name: 'Max (HBO)', domain: 'max.com', defaultCategory: 'Lazer', defaultTags: ['Streaming'], isRecurring: true, defaultAmount: 34.90, defaultCurrency: Currency.BRL, iconName: 'Tv' },
+  { id: 'gamepass', name: 'Xbox Game Pass', domain: 'xbox.com', defaultCategory: 'Lazer', defaultTags: ['Jogos'], isRecurring: true, defaultAmount: 44.90, defaultCurrency: Currency.BRL, iconName: 'Gamepad2' },
+  { id: 'psplus', name: 'PlayStation Plus', domain: 'playstation.com', defaultCategory: 'Lazer', defaultTags: ['Jogos'], isRecurring: true, defaultAmount: 42.90, defaultCurrency: Currency.BRL, iconName: 'Gamepad2' },
 ];
 
 export const CATEGORY_ICONS: Record<string, string> = {
-  'Assinaturas / Subs': 'CreditCard',
-  'Software & Tools': 'Laptop',
-  'IA & Automação': 'Bot',
-  'Streaming / Lazer': 'PlayCircle',
-  'Escritório / Home Office': 'Home',
+  'Moradia': 'Home',
+  'Contas Fixas': 'Zap',
+  'Alimentação': 'UtensilsCrossed',
+  'Ferramentas': 'Wrench',
   'Transporte': 'Car',
-  'Alimentação / Café': 'Coffee',
+  'Lazer': 'Gamepad2',
   'Equipamentos': 'Monitor',
   'Impostos & Taxas': 'FileText',
   'Outros': 'HelpCircle'

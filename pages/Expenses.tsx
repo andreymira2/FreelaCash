@@ -468,10 +468,10 @@ const Expenses: React.FC = () => {
                                 )}
                                 <div>
                                     <h3 className="text-xl font-black text-white">
-                                        {formStep === 'pick' ? 'Nova Despesa' : 'Confirmar Detalhes'}
+                                        {formStep === 'pick' ? 'Nova Despesa' : 'Detalhes'}
                                     </h3>
                                     <p className="text-xs text-ink-gray mt-0.5">
-                                        {formStep === 'pick' ? 'Escolha um serviço ou adicione manualmente' : 'Revise e ajuste os valores'}
+                                        {formStep === 'pick' ? 'Adicione qualquer tipo de gasto' : 'Preencha o valor e salve'}
                                     </p>
                                 </div>
                             </div>
