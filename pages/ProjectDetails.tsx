@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { Card, Button, Badge, CurrencyDisplay, Input, Avatar, ProgressBar, Select } from '../components/ui';
 import BillingModal from '../components/BillingModal';
-import PaymentGrid from '../components/PaymentGrid';
 import { ProjectStatus, ProjectContractType, Payment, PaymentStatus, Client, Currency, CURRENCY_SYMBOLS } from '../types';
 import { ArrowLeft, Clock, Trash2, DollarSign, Edit2, User, Plus, CheckCircle2, Circle, FileText, Calendar, ShieldCheck, Settings, Send, Copy } from 'lucide-react';
 import { useProjectFinancials } from '../hooks/useFinancialEngine';
@@ -250,11 +249,6 @@ const ProjectDetails: React.FC = () => {
                         </Button>
                     )}
                 </div>
-
-                {/* Payment Grid - Visual History */}
-                {paymentsList.filter(p => p.status === PaymentStatus.PAID || !p.status).length > 0 && (
-                    <PaymentGrid payments={paymentsList} currency={project.currency} months={6} />
-                )}
 
                 {/* Payment History */}
                 <div>
