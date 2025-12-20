@@ -1,21 +1,21 @@
 import React, { useState, useMemo } from 'react';
-import { SERVICE_PRESETS, ServicePreset, EXPENSE_CATEGORIES } from '../types';
-import { Search, Plus, HelpCircle } from 'lucide-react';
-import * as Icons from 'lucide-react';
+import { SERVICE_PRESETS, ServicePreset, EXPENSE_CATEGORIES, CURRENCY_SYMBOLS, Currency } from '../types';
+import { Search, Plus, HelpCircle, Tv, Music, Laptop, Sparkles, Server, Car, Coffee, Zap } from 'lucide-react';
 
 interface QuickExpenseGridProps {
     onSelect: (preset: ServicePreset) => void;
-    filterCategory?: string;
+    onQuickAdd?: (preset: ServicePreset) => void;
 }
 
-const CompanyLogo: React.FC<{ domain: string; name: string; size?: number }> = ({ domain, name, size = 40 }) => {
+const CompanyLogo: React.FC<{ domain: string; name: string; size?: number; className?: string }> = ({ domain, name, size = 40, className = '' }) => {
     const [hasError, setHasError] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
-    if (hasError) {
+    if (hasError || !domain) {
         const initial = name.charAt(0).toUpperCase();
         return (
             <div 
-                className="flex items-center justify-center bg-white/10 text-white font-bold rounded-xl"
+                className={`flex items-center justify-center bg-gradient-to-br from-brand/20 to-brand/5 text-brand font-black rounded-2xl border border-brand/20 ${className}`}
                 style={{ width: size, height: size, fontSize: size * 0.4 }}
             >
                 {initial}
@@ -24,32 +24,39 @@ const CompanyLogo: React.FC<{ domain: string; name: string; size?: number }> = (
     }
 
     return (
-        <img
-            src={`https://img.logo.dev/${domain}?token=pk_X-1ZO13GSgeOoUrIuJ6GMQ`}
-            alt={name}
-            className="rounded-xl object-contain bg-white"
-            style={{ width: size, height: size }}
-            onError={() => setHasError(true)}
-        />
+        <div className={`relative ${className}`} style={{ width: size, height: size }}>
+            {isLoading && (
+                <div className="absolute inset-0 bg-white/5 rounded-2xl animate-pulse" />
+            )}
+            <img
+                src={`https://img.logo.dev/${domain}?token=pk_X-1ZO13GSgeOoUrIuJ6GMQ`}
+                alt={name}
+                className={`rounded-2xl object-contain bg-white shadow-lg transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+                style={{ width: size, height: size }}
+                onLoad={() => setIsLoading(false)}
+                onError={() => { setHasError(true); setIsLoading(false); }}
+            />
+        </div>
     );
 };
 
-const IconMapper: React.FC<{ name: string; size?: number; className?: string }> = ({ name, size = 16, className = '' }) => {
-    const IconComponent = (Icons as any)[name] || Icons.HelpCircle;
-    return <IconComponent size={size} className={className} />;
-};
-
 const CATEGORY_TABS = [
-    { id: 'all', label: 'Todos' },
-    { id: 'Streaming / Lazer', label: 'Streaming' },
-    { id: 'Software & Tools', label: 'Software' },
-    { id: 'IA & Automação', label: 'IA' },
-    { id: 'Assinaturas / Subs', label: 'Infra' },
-    { id: 'Transporte', label: 'Transporte' },
-    { id: 'Alimentação / Café', label: 'Food' },
+    { id: 'all', label: 'Todos', icon: Zap, color: 'brand' },
+    { id: 'Streaming / Lazer', label: 'Streaming', icon: Tv, color: 'semantic-purple' },
+    { id: 'Software & Tools', label: 'Software', icon: Laptop, color: 'blue-500' },
+    { id: 'IA & Automação', label: 'IA', icon: Sparkles, color: 'semantic-yellow' },
+    { id: 'Assinaturas / Subs', label: 'Infra', icon: Server, color: 'semantic-red' },
+    { id: 'Transporte', label: 'Transporte', icon: Car, color: 'orange-500' },
+    { id: 'Alimentação / Café', label: 'Food', icon: Coffee, color: 'amber-500' },
 ];
 
-const QuickExpenseGrid: React.FC<QuickExpenseGridProps> = ({ onSelect }) => {
+const formatPrice = (amount?: number, currency?: Currency) => {
+    if (!amount) return null;
+    const symbol = currency ? CURRENCY_SYMBOLS[currency] : 'R$';
+    return `${symbol} ${amount.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+};
+
+const QuickExpenseGrid: React.FC<QuickExpenseGridProps> = ({ onSelect, onQuickAdd }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('all');
 
@@ -73,59 +80,104 @@ const QuickExpenseGrid: React.FC<QuickExpenseGridProps> = ({ onSelect }) => {
     }, [searchTerm, activeTab]);
 
     return (
-        <div className="space-y-4">
-            <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-dim" />
+        <div className="space-y-5">
+            <div className="relative group">
+                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-dim group-focus-within:text-brand transition-colors" />
                 <input
                     type="text"
-                    placeholder="Buscar serviço..."
+                    placeholder="Buscar Netflix, Spotify, Adobe..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-3 bg-base-card border border-white/10 rounded-xl text-sm text-white focus:border-brand outline-none transition-all"
+                    className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-base text-white placeholder:text-ink-dim focus:border-brand focus:bg-white/10 outline-none transition-all"
                     autoFocus
                 />
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {CATEGORY_TABS.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                            activeTab === tab.id 
-                                ? 'bg-brand text-black' 
-                                : 'bg-white/5 text-ink-gray hover:bg-white/10'
-                        }`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
+            <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1 scrollbar-hide">
+                {CATEGORY_TABS.map((tab, idx) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold whitespace-nowrap transition-all duration-200 ${
+                                isActive 
+                                    ? 'bg-brand text-black shadow-neon scale-105' 
+                                    : 'bg-white/5 text-ink-gray hover:bg-white/10 hover:text-white hover:scale-102'
+                            }`}
+                            style={{ 
+                                animationDelay: `${idx * 50}ms`,
+                            }}
+                        >
+                            <Icon size={16} className={isActive ? 'text-black' : ''} />
+                            {tab.label}
+                        </button>
+                    );
+                })}
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-1">
-                {filteredPresets.map(preset => (
-                    <button
-                        key={preset.id}
-                        onClick={() => onSelect(preset)}
-                        className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-base-card border border-white/5 hover:border-brand hover:bg-brand/5 transition-all group"
-                    >
-                        <CompanyLogo domain={preset.domain} name={preset.name} size={48} />
-                        <span className="text-xs font-medium text-ink-gray group-hover:text-white text-center line-clamp-2 leading-tight">
-                            {preset.name}
-                        </span>
-                    </button>
-                ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-[50vh] overflow-y-auto pr-1 pb-2">
+                {filteredPresets.map((preset, idx) => {
+                    const price = formatPrice(preset.defaultAmount, preset.defaultCurrency);
+                    return (
+                        <button
+                            key={preset.id}
+                            onClick={() => onSelect(preset)}
+                            className="relative flex flex-col items-center gap-3 p-5 rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.02] border border-white/10 hover:border-brand/50 hover:from-brand/10 hover:to-brand/5 transition-all duration-300 group hover:scale-[1.02] hover:shadow-xl"
+                            style={{ 
+                                animationDelay: `${idx * 30}ms`,
+                            }}
+                        >
+                            <div className="relative">
+                                <CompanyLogo 
+                                    domain={preset.domain} 
+                                    name={preset.name} 
+                                    size={64} 
+                                    className="group-hover:scale-110 transition-transform duration-300"
+                                />
+                                {preset.isRecurring && (
+                                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-brand rounded-full flex items-center justify-center">
+                                        <span className="text-[10px] text-black font-black">∞</span>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="text-center space-y-1">
+                                <span className="text-sm font-bold text-white group-hover:text-brand transition-colors line-clamp-1">
+                                    {preset.name}
+                                </span>
+                                {price && (
+                                    <div className="text-xs font-medium text-ink-gray group-hover:text-white/80 transition-colors">
+                                        {price}<span className="text-ink-dim">/mês</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {onQuickAdd && price && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onQuickAdd(preset); }}
+                                    className="absolute top-2 right-2 w-8 h-8 rounded-xl bg-brand/0 group-hover:bg-brand flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200"
+                                >
+                                    <Plus size={16} className="text-brand group-hover:text-black" />
+                                </button>
+                            )}
+                        </button>
+                    );
+                })}
 
                 {filteredPresets.length === 0 && (
-                    <div className="col-span-full py-12 text-center">
-                        <HelpCircle size={32} className="mx-auto text-ink-dim mb-3" />
-                        <p className="text-sm text-ink-gray">Nenhum serviço encontrado</p>
-                        <p className="text-xs text-ink-dim mt-1">Tente outro termo ou adicione manualmente</p>
+                    <div className="col-span-full py-16 text-center">
+                        <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
+                            <HelpCircle size={40} className="text-ink-dim" />
+                        </div>
+                        <p className="text-base font-medium text-ink-gray">Nenhum serviço encontrado</p>
+                        <p className="text-sm text-ink-dim mt-2">Tente outro termo ou adicione manualmente</p>
                     </div>
                 )}
             </div>
 
-            <div className="pt-3 border-t border-white/5">
+            <div className="pt-4 border-t border-white/5">
                 <button
                     onClick={() => onSelect({ 
                         id: 'custom', 
@@ -136,10 +188,12 @@ const QuickExpenseGrid: React.FC<QuickExpenseGridProps> = ({ onSelect }) => {
                         isRecurring: true, 
                         iconName: 'Plus' 
                     })}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-ink-gray hover:text-white transition-all text-sm font-medium"
+                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-white/5 hover:bg-brand/10 border border-dashed border-white/10 hover:border-brand/30 text-ink-gray hover:text-brand transition-all duration-200 text-base font-medium group"
                 >
-                    <Plus size={18} />
-                    Adicionar manualmente
+                    <div className="w-10 h-10 rounded-xl bg-white/5 group-hover:bg-brand/20 flex items-center justify-center transition-colors">
+                        <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                    </div>
+                    Adicionar despesa personalizada
                 </button>
             </div>
         </div>

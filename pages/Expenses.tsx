@@ -4,7 +4,7 @@ import { useData } from '../context/DataContext';
 import { Card, Button, Input, Select, CurrencyDisplay, Toggle, DateRangeSelect, EmptyState, PageHeader } from '../components/ui';
 import { Currency, EXPENSE_CATEGORIES, SERVICE_PRESETS, CATEGORY_ICONS, ServicePreset, Expense } from '../types';
 import { safeFloat, parseLocalDate, toInputDate } from '../utils/format';
-import { Plus, Trash2, Wallet, X, HelpCircle, CheckCircle2, Clock, AlertTriangle, Zap, Receipt, Store, Search, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Wallet, X, HelpCircle, CheckCircle2, Clock, AlertTriangle, Zap, Receipt, Store, Search, ArrowLeft, ChevronDown, Calendar, DollarSign, Repeat } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRecurringExpenseProgress, useRecurringExpenseTotal, useCurrencyConverter } from '../hooks/useFinancialEngine';
@@ -36,6 +36,7 @@ const Expenses: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [formStep, setFormStep] = useState<'pick' | 'details'>('pick');
     const [selectedPreset, setSelectedPreset] = useState<ServicePreset | null>(null);
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
     const defaultForm: ExpenseFormState = {
         title: '', amount: '', currency: settings.mainCurrency, category: EXPENSE_CATEGORIES[1], date: toInputDate(new Date().toISOString()), tags: [], isWorkRelated: true, isRecurring: false, recurringFrequency: 'MONTHLY', status: 'PAID', dueDay: '',
@@ -63,6 +64,7 @@ const Expenses: React.FC = () => {
         setFormError('');
         setSelectedPreset(null);
         setFormStep('pick');
+        setShowAdvanced(false);
         setShowForm(true);
     };
 
@@ -70,6 +72,7 @@ const Expenses: React.FC = () => {
         setShowForm(false);
         setFormStep('pick');
         setSelectedPreset(null);
+        setShowAdvanced(false);
     };
 
     const handleCardClick = (expense: Expense) => {
@@ -451,88 +454,204 @@ const Expenses: React.FC = () => {
 
             {/* Form Modal */}
             {showForm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in zoom-in-95">
-                    <Card className="w-full max-w-2xl border-white/10 max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="flex items-center gap-3">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-200">
+                    <div className={`w-full ${formStep === 'pick' ? 'max-w-3xl' : 'max-w-lg'} bg-gradient-to-b from-base-card to-base-bg border border-white/10 rounded-3xl max-h-[90vh] overflow-hidden shadow-2xl transition-all duration-300`}>
+                        <div className="flex justify-between items-center p-6 border-b border-white/5">
+                            <div className="flex items-center gap-4">
                                 {formStep === 'details' && (
                                     <button 
-                                        onClick={() => setFormStep('pick')} 
-                                        className="p-2 rounded-full hover:bg-white/10 text-ink-gray hover:text-white transition-colors"
+                                        onClick={() => { setFormStep('pick'); setShowAdvanced(false); }} 
+                                        className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-ink-gray hover:text-white transition-all"
                                     >
-                                        <ArrowLeft size={20} />
+                                        <ArrowLeft size={18} />
                                     </button>
                                 )}
-                                <h3 className="text-xl font-black text-white">
-                                    {formStep === 'pick' ? 'Escolha o Serviço' : 'Nova Despesa'}
-                                </h3>
+                                <div>
+                                    <h3 className="text-xl font-black text-white">
+                                        {formStep === 'pick' ? 'Nova Despesa' : 'Confirmar Detalhes'}
+                                    </h3>
+                                    <p className="text-xs text-ink-gray mt-0.5">
+                                        {formStep === 'pick' ? 'Escolha um serviço ou adicione manualmente' : 'Revise e ajuste os valores'}
+                                    </p>
+                                </div>
                             </div>
-                            <button onClick={handleCloseForm} className="p-2 rounded-full hover:bg-white/10"><X size={20} /></button>
+                            <button 
+                                onClick={handleCloseForm} 
+                                className="w-10 h-10 rounded-xl bg-white/5 hover:bg-semantic-red/20 flex items-center justify-center text-ink-gray hover:text-semantic-red transition-all"
+                            >
+                                <X size={18} />
+                            </button>
                         </div>
 
-                        {formStep === 'pick' && (
-                            <QuickExpenseGrid onSelect={handleQuickPick} />
-                        )}
+                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-88px)]">
+                            {formStep === 'pick' && (
+                                <QuickExpenseGrid onSelect={handleQuickPick} />
+                            )}
 
-                        {formStep === 'details' && (
-                            <>
-                                {selectedPreset && selectedPreset.domain && (
-                                    <div className="flex items-center gap-4 mb-6 p-4 bg-white/5 rounded-2xl border border-white/5">
-                                        <CompanyLogo domain={selectedPreset.domain} name={selectedPreset.name} size={56} />
-                                        <div>
-                                            <h4 className="font-bold text-white text-lg">{selectedPreset.name}</h4>
-                                            <p className="text-xs text-ink-gray">{selectedPreset.defaultCategory}</p>
+                            {formStep === 'details' && (
+                                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                                    {selectedPreset && selectedPreset.domain && (
+                                        <div className="flex items-center gap-5 p-5 bg-gradient-to-r from-brand/10 to-transparent rounded-2xl border border-brand/20">
+                                            <CompanyLogo domain={selectedPreset.domain} name={selectedPreset.name} size={72} />
+                                            <div>
+                                                <h4 className="font-black text-white text-xl">{selectedPreset.name}</h4>
+                                                <p className="text-sm text-ink-gray mt-1">{selectedPreset.defaultCategory}</p>
+                                                {selectedPreset.isRecurring && (
+                                                    <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 bg-brand/10 rounded-full text-xs font-bold text-brand">
+                                                        <Repeat size={12} /> Recorrente
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                {formError && <div className="mb-6 p-3 bg-semantic-red/10 border border-semantic-red/30 rounded-xl flex items-center gap-2 text-semantic-red font-bold text-sm"><AlertTriangle size={16} /> {formError}</div>}
-
-                                <form onSubmit={handleSubmit} className="space-y-4">
-                                    <Input label="Título" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} autoFocus />
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <Input label="Valor" type="number" step="0.01" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} />
-                                        <Select label="Moeda" value={formData.currency} onChange={e => setFormData({ ...formData, currency: e.target.value as Currency })}>{Object.values(Currency).map(c => <option className="bg-black" key={c} value={c}>{c}</option>)}</Select>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <Select label="Categoria" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>{EXPENSE_CATEGORIES.map(cat => <option className="bg-black" key={cat} value={cat}>{cat}</option>)}</Select>
-                                        <Input label="Data (Ref)" type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
-                                    </div>
-                                    <div className="flex flex-col gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-                                        <div className="flex items-center gap-4">
-                                            <Toggle label="Recorrente" checked={formData.isRecurring} onChange={c => setFormData({ ...formData, isRecurring: c })} />
-                                            {formData.isRecurring && (
-                                                <select className="bg-black border border-white/20 text-white text-xs font-bold p-2 rounded-lg outline-none" value={formData.recurringFrequency} onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value as any })}>
-                                                    <option value="MONTHLY">Mensal</option>
-                                                    <option value="YEARLY">Anual</option>
-                                                </select>
-                                            )}
+                                    {formError && (
+                                        <div className="p-4 bg-semantic-red/10 border border-semantic-red/30 rounded-2xl flex items-center gap-3 text-semantic-red animate-in shake">
+                                            <AlertTriangle size={20} />
+                                            <span className="font-bold text-sm">{formError}</span>
                                         </div>
+                                    )}
+
+                                    <form onSubmit={handleSubmit} className="space-y-5">
+                                        <div className="space-y-4">
+                                            <Input 
+                                                label="Nome da despesa" 
+                                                value={formData.title} 
+                                                onChange={e => setFormData({ ...formData, title: e.target.value })} 
+                                                autoFocus={!selectedPreset?.domain}
+                                                className="text-lg"
+                                            />
+                                            
+                                            <div className="grid grid-cols-5 gap-3">
+                                                <div className="col-span-3">
+                                                    <label className="block text-xs font-bold text-brand uppercase tracking-wider mb-2">
+                                                        <DollarSign size={12} className="inline mr-1" />
+                                                        Valor
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={formData.amount}
+                                                        onChange={e => setFormData({ ...formData, amount: e.target.value })}
+                                                        className="w-full px-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-2xl font-black text-white focus:border-brand outline-none transition-all"
+                                                        placeholder="0,00"
+                                                        autoFocus={!!selectedPreset?.domain}
+                                                    />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="block text-xs font-bold text-ink-gray uppercase tracking-wider mb-2">Moeda</label>
+                                                    <select 
+                                                        value={formData.currency} 
+                                                        onChange={e => setFormData({ ...formData, currency: e.target.value as Currency })}
+                                                        className="w-full px-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-lg font-bold text-white focus:border-brand outline-none transition-all appearance-none cursor-pointer"
+                                                    >
+                                                        {Object.values(Currency).map(c => <option className="bg-base-bg" key={c} value={c}>{c}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${formData.isRecurring ? 'bg-brand text-black' : 'bg-white/10 text-ink-gray'}`}>
+                                                    <Repeat size={18} />
+                                                </div>
+                                                <div>
+                                                    <span className="text-sm font-bold text-white">Despesa Recorrente</span>
+                                                    <p className="text-xs text-ink-dim">Cobra todo mês automaticamente</p>
+                                                </div>
+                                            </div>
+                                            <Toggle checked={formData.isRecurring} onChange={c => setFormData({ ...formData, isRecurring: c })} />
+                                        </div>
+
                                         {formData.isRecurring && (
-                                            <div className="animate-in slide-in-from-top-2 space-y-4 pt-2 border-t border-white/10 mt-2">
-                                                <Input label="Dia Vencimento" type="number" min="1" max="31" placeholder={`Padrão: ${formData.date.split('-')[2]}`} value={formData.dueDay} onChange={e => setFormData({ ...formData, dueDay: e.target.value })} className="bg-black" />
-                                                <div className="flex items-center gap-3"><Toggle label="Teste Grátis (Trial)?" checked={formData.isTrial} onChange={c => setFormData({ ...formData, isTrial: c })} /></div>
-                                                {formData.isTrial && (
-                                                    <div className="bg-semantic-yellow/10 p-3 rounded-xl border border-semantic-yellow/30">
-                                                        <Input label="Fim do Teste" type="date" value={formData.trialEndDate} onChange={e => setFormData({ ...formData, trialEndDate: e.target.value })} className="bg-black border-semantic-yellow/30" />
+                                            <div className="grid grid-cols-2 gap-3 animate-in slide-in-from-top-2 duration-200">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-ink-gray uppercase tracking-wider mb-2">
+                                                        <Calendar size={12} className="inline mr-1" />
+                                                        Dia do vencimento
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        max="31"
+                                                        value={formData.dueDay}
+                                                        onChange={e => setFormData({ ...formData, dueDay: e.target.value })}
+                                                        placeholder={formData.date.split('-')[2] || '15'}
+                                                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-base font-bold text-white focus:border-brand outline-none transition-all"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-ink-gray uppercase tracking-wider mb-2">Frequência</label>
+                                                    <select 
+                                                        value={formData.recurringFrequency} 
+                                                        onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value as any })}
+                                                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-base font-bold text-white focus:border-brand outline-none transition-all appearance-none cursor-pointer"
+                                                    >
+                                                        <option className="bg-base-bg" value="MONTHLY">Mensal</option>
+                                                        <option className="bg-base-bg" value="YEARLY">Anual</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAdvanced(!showAdvanced)}
+                                            className="w-full flex items-center justify-between py-3 text-sm text-ink-gray hover:text-white transition-colors"
+                                        >
+                                            <span className="font-medium">Mais opções</span>
+                                            <ChevronDown size={16} className={`transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`} />
+                                        </button>
+
+                                        {showAdvanced && (
+                                            <div className="space-y-4 animate-in slide-in-from-top-2 duration-200 pb-2">
+                                                <Select label="Categoria" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                                                    {EXPENSE_CATEGORIES.map(cat => <option className="bg-base-bg" key={cat} value={cat}>{cat}</option>)}
+                                                </Select>
+                                                
+                                                <Input label="Data de referência" type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+
+                                                {formData.isRecurring && (
+                                                    <div className="p-4 bg-semantic-yellow/5 rounded-2xl border border-semantic-yellow/20">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <Zap size={18} className="text-semantic-yellow" />
+                                                                <span className="text-sm font-bold text-white">Período de teste (Trial)</span>
+                                                            </div>
+                                                            <Toggle checked={formData.isTrial} onChange={c => setFormData({ ...formData, isTrial: c })} />
+                                                        </div>
+                                                        {formData.isTrial && (
+                                                            <div className="mt-4 animate-in slide-in-from-top-2">
+                                                                <Input 
+                                                                    label="Fim do período grátis" 
+                                                                    type="date" 
+                                                                    value={formData.trialEndDate} 
+                                                                    onChange={e => setFormData({ ...formData, trialEndDate: e.target.value })} 
+                                                                />
+                                                            </div>
+                                                        )}
                                                     </div>
+                                                )}
+
+                                                {!formData.isRecurring && (
+                                                    <Select label="Status do pagamento" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })}>
+                                                        <option className="bg-base-bg" value="PAID">Já pago</option>
+                                                        <option className="bg-base-bg" value="PENDING">Pendente</option>
+                                                    </Select>
                                                 )}
                                             </div>
                                         )}
-                                    </div>
-                                    {!formData.isRecurring && (
-                                        <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-                                            <Select label="Status" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })}>
-                                                <option className="bg-black" value="PAID">Pago</option>
-                                                <option className="bg-black" value="PENDING">Pendente</option>
-                                            </Select>
-                                        </div>
-                                    )}
-                                    <Button type="submit" variant="primary" className="w-full h-12 mt-4">Salvar Despesa</Button>
-                                </form>
-                            </>
-                        )}
-                    </Card>
+
+                                        <Button type="submit" variant="primary" className="w-full h-14 mt-2 text-base font-black shadow-neon">
+                                            <Plus size={20} />
+                                            Adicionar Despesa
+                                        </Button>
+                                    </form>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
