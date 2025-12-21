@@ -239,7 +239,7 @@ const Projects: React.FC = () => {
                                 }
                                 if (total.remaining > 0) return { text: 'Agendar ou cobrar', color: 'text-semantic-yellow' };
                                 if (p.status === ProjectStatus.ACTIVE) return { text: 'Projeto em andamento', color: 'text-brand' };
-                                if (p.status === ProjectStatus.COMPLETED) return { text: 'Aguardando pagamento final', color: 'text-semantic-yellow' };
+                                if (p.status === ProjectStatus.COMPLETED && total.remaining > 0) return { text: 'Aguardando pagamento final', color: 'text-semantic-yellow' };
                                 return null;
                             };
                             const nextAction = getNextAction();
