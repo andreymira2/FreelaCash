@@ -196,6 +196,9 @@ const Expenses: React.FC = () => {
 
     const sortedRecurring = useMemo(() => {
         return [...recurringExpenses].sort((a, b) => {
+            const catA = a.category || 'Outros';
+            const catB = b.category || 'Outros';
+            if (catA !== catB) return catA.localeCompare(catB, 'pt-BR');
             if (a.isTrial && !b.isTrial) return -1;
             if (!a.isTrial && b.isTrial) return 1;
             const dayA = a.dueDay || new Date(a.date).getDate();
@@ -203,6 +206,16 @@ const Expenses: React.FC = () => {
             return dayA - dayB;
         });
     }, [recurringExpenses]);
+
+    const groupedRecurring = useMemo(() => {
+        const groups: Record<string, Expense[]> = {};
+        sortedRecurring.forEach(exp => {
+            const cat = exp.category || 'Outros';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(exp);
+        });
+        return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b, 'pt-BR'));
+    }, [sortedRecurring]);
 
     // Helper to determine payment status relative to the FILTER
     const getRecurringStatus = (exp: Expense) => {
@@ -346,91 +359,99 @@ const Expenses: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="space-y-3">
-                        {sortedRecurring.length > 0 ? (
-                            sortedRecurring.map(exp => {
-                                const iconName = CATEGORY_ICONS[exp.category || 'Outros'] || 'HelpCircle';
-                                const isPaid = getRecurringStatus(exp) === 'PAID';
-                                const isTrialActive = exp.isTrial && exp.trialEndDate && new Date(exp.trialEndDate) > new Date();
-                                const daysLeft = exp.trialEndDate ? getTrialDaysLeft(exp.trialEndDate) : 0;
-
+                    <div className="space-y-4">
+                        {groupedRecurring.length > 0 ? (
+                            groupedRecurring.map(([category, expensesInGroup]) => {
+                                const categoryIconName = CATEGORY_ICONS[category] || 'HelpCircle';
                                 return (
-                                    <div
-                                        key={exp.id}
-                                        onClick={() => handleCardClick(exp)}
-                                        className="bg-base-card border border-white/5 rounded-2xl p-4 hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer group"
-                                    >
-                                        {/* GRID LAYOUT: [ICON/ID] [AMOUNT/DATE] [ACTIONS] */}
-                                        <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-center">
+                                    <div key={category} className="space-y-2">
+                                        <div className="flex items-center gap-2 px-1">
+                                            <IconMapper name={categoryIconName} size={14} className="text-ink-gray" />
+                                            <h4 className="text-xs font-bold text-ink-gray uppercase tracking-wider">{category}</h4>
+                                            <span className="text-xs text-ink-dim">({expensesInGroup.length})</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {expensesInGroup.map(exp => {
+                                                const iconName = CATEGORY_ICONS[exp.category || 'Outros'] || 'HelpCircle';
+                                                const isPaid = getRecurringStatus(exp) === 'PAID';
+                                                const isTrialActive = exp.isTrial && exp.trialEndDate && new Date(exp.trialEndDate) > new Date();
+                                                const daysLeft = exp.trialEndDate ? getTrialDaysLeft(exp.trialEndDate) : 0;
 
-                                            {/* Col 1: Identity */}
-                                            <div className="flex items-center gap-4">
-                                                {exp.logoUrl ? (
-                                                    <ExpenseLogo 
-                                                        logoUrl={exp.logoUrl} 
-                                                        title={exp.title} 
-                                                        isTrialActive={isTrialActive} 
-                                                    />
-                                                ) : (
-                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isTrialActive ? (daysLeft <= 3 ? 'bg-semantic-red animate-pulse' : 'bg-semantic-yellow') + ' text-black' : 'bg-white/5 text-ink-gray group-hover:text-white transition-colors'}`}>
-                                                        {isTrialActive ? <Zap size={20} fill="black" /> : <IconMapper name={iconName} size={20} />}
-                                                    </div>
-                                                )}
-                                                <div className="min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <h4 className="font-bold text-white text-sm truncate">{exp.title}</h4>
-                                                        {isTrialActive && (
-                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${daysLeft <= 3 ? 'bg-semantic-red text-white' : 'bg-semantic-yellow/20 text-semantic-yellow'}`}>
-                                                                {daysLeft <= 0 ? 'Trial expirado!' : daysLeft === 1 ? 'Expira amanhã!' : `${daysLeft} dias restantes`}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-ink-gray truncate">{exp.category}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Col 2: Value */}
-                                            <div className="text-right px-4 border-r border-white/5 border-l md:border-l-0">
-                                                <p className={`font-black text-base ${isTrialActive ? 'text-semantic-yellow line-through opacity-60' : 'text-white'}`}>
-                                                    <CurrencyDisplay amount={exp.amount} currency={exp.currency} />
-                                                </p>
-                                                <p className="text-xs md:text-[10px] text-ink-dim uppercase">Dia {exp.dueDay || '?'}</p>
-                                            </div>
-
-                                            {/* Col 3: Actions */}
-                                            <div className="flex items-center gap-2">
-                                                {!isTrialActive && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleExpensePayment(exp.id, getDateRangeFilter().start);
-                                                        }}
-                                                        className={`h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all ${isPaid ? 'bg-brand/10 text-brand hover:bg-brand/20' : 'bg-semantic-yellow/10 text-semantic-yellow hover:bg-semantic-yellow/20'}`}
+                                                return (
+                                                    <div
+                                                        key={exp.id}
+                                                        onClick={() => handleCardClick(exp)}
+                                                        className="bg-base-card border border-white/5 rounded-2xl p-4 hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer group"
                                                     >
-                                                        {isPaid ? (
-                                                            <><CheckCircle2 size={14} /> <span className="hidden sm:inline">Pago</span></>
-                                                        ) : (
-                                                            <><Clock size={14} /> <span className="hidden sm:inline">Pagar</span></>
-                                                        )}
-                                                    </button>
-                                                )}
-                                                {isTrialActive && (
-                                                    <div className="h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold bg-semantic-yellow/10 text-semantic-yellow">
-                                                        <Zap size={14} /> Trial
-                                                    </div>
-                                                )}
+                                                        <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-center">
+                                                            <div className="flex items-center gap-4">
+                                                                {exp.logoUrl ? (
+                                                                    <ExpenseLogo 
+                                                                        logoUrl={exp.logoUrl} 
+                                                                        title={exp.title} 
+                                                                        isTrialActive={isTrialActive} 
+                                                                    />
+                                                                ) : (
+                                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isTrialActive ? (daysLeft <= 3 ? 'bg-semantic-red animate-pulse' : 'bg-semantic-yellow') + ' text-black' : 'bg-white/5 text-ink-gray group-hover:text-white transition-colors'}`}>
+                                                                        {isTrialActive ? <Zap size={20} fill="black" /> : <IconMapper name={iconName} size={20} />}
+                                                                    </div>
+                                                                )}
+                                                                <div className="min-w-0">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <h4 className="font-bold text-white text-sm truncate">{exp.title}</h4>
+                                                                        {isTrialActive && (
+                                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${daysLeft <= 3 ? 'bg-semantic-red text-white' : 'bg-semantic-yellow/20 text-semantic-yellow'}`}>
+                                                                                {daysLeft <= 0 ? 'Trial expirado!' : daysLeft === 1 ? 'Expira amanhã!' : `${daysLeft} dias restantes`}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
 
-                                                <button
-                                                    onClick={(e) => handleDeleteClick(e, exp.id)}
-                                                    className="w-9 h-9 rounded-xl flex items-center justify-center text-ink-dim hover:text-semantic-red hover:bg-semantic-red/10 transition-colors"
-                                                    title="Excluir"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
+                                                            <div className="text-right px-4 border-r border-white/5 border-l md:border-l-0">
+                                                                <p className={`font-black text-base ${isTrialActive ? 'text-semantic-yellow line-through opacity-60' : 'text-white'}`}>
+                                                                    <CurrencyDisplay amount={exp.amount} currency={exp.currency} />
+                                                                </p>
+                                                                <p className="text-xs md:text-[10px] text-ink-dim uppercase">Dia {exp.dueDay || '?'}</p>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2">
+                                                                {!isTrialActive && (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            toggleExpensePayment(exp.id, getDateRangeFilter().start);
+                                                                        }}
+                                                                        className={`h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all ${isPaid ? 'bg-brand/10 text-brand hover:bg-brand/20' : 'bg-semantic-yellow/10 text-semantic-yellow hover:bg-semantic-yellow/20'}`}
+                                                                    >
+                                                                        {isPaid ? (
+                                                                            <><CheckCircle2 size={14} /> <span className="hidden sm:inline">Pago</span></>
+                                                                        ) : (
+                                                                            <><Clock size={14} /> <span className="hidden sm:inline">Pagar</span></>
+                                                                        )}
+                                                                    </button>
+                                                                )}
+                                                                {isTrialActive && (
+                                                                    <div className="h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold bg-semantic-yellow/10 text-semantic-yellow">
+                                                                        <Zap size={14} /> Trial
+                                                                    </div>
+                                                                )}
+
+                                                                <button
+                                                                    onClick={(e) => handleDeleteClick(e, exp.id)}
+                                                                    className="w-9 h-9 rounded-xl flex items-center justify-center text-ink-dim hover:text-semantic-red hover:bg-semantic-red/10 transition-colors"
+                                                                    title="Excluir"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
-                                )
+                                );
                             })
                         ) : (
                             <div className="p-8 text-center bg-base-card rounded-2xl border border-dashed border-white/10">

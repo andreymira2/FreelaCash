@@ -91,8 +91,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [dateRange, setDateRange] = useState<DateRange>('THIS_MONTH');
   const lastUserId = useRef<string | null>(null);
   const dataLoaded = useRef(false);
+  const pendingMutations = useRef(0);
+  const shouldRefetchAfterMutations = useRef(false);
 
   const loadUserData = useCallback(async (userId: string, isBackgroundRefresh = false) => {
+    if (isBackgroundRefresh && pendingMutations.current > 0) {
+      shouldRefetchAfterMutations.current = true;
+      return;
+    }
+
     if (!isBackgroundRefresh) {
       setLoading(true);
     }
@@ -193,6 +200,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
+
+  const runMutation = useCallback(async <T,>(fn: () => Promise<T>): Promise<T> => {
+    pendingMutations.current++;
+    try {
+      return await fn();
+    } finally {
+      pendingMutations.current--;
+      if (pendingMutations.current === 0 && shouldRefetchAfterMutations.current && user) {
+        shouldRefetchAfterMutations.current = false;
+        loadUserData(user.id, true);
+      }
+    }
+  }, [user, loadUserData]);
 
   const getDateRangeFilter = useCallback(() => {
     const start = new Date();
@@ -465,21 +485,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addExpense = useCallback(async (expense: Expense) => {
     setData(prev => ({ ...prev, expenses: [expense, ...prev.expenses] }));
     if (user) {
-      try {
-        const newId = await database.addExpense(user.id, expense);
-        if (newId && newId !== expense.id) {
-          setData(prev => ({
-            ...prev,
-            expenses: prev.expenses.map(e => e.id === expense.id ? { ...e, id: newId } : e)
-          }));
+      await runMutation(async () => {
+        try {
+          const newId = await database.addExpense(user.id, expense);
+          if (newId && newId !== expense.id) {
+            setData(prev => ({
+              ...prev,
+              expenses: prev.expenses.map(e => e.id === expense.id ? { ...e, id: newId } : e)
+            }));
+          }
+        } catch (error) {
+          console.error('Failed to add expense:', error);
+          showError('Erro ao salvar despesa. Recarregando dados...');
+          loadUserData(user.id, true);
         }
-      } catch (error) {
-        console.error('Failed to add expense:', error);
-        showError('Erro ao salvar despesa. Recarregando dados...');
-        loadUserData(user.id, true);
-      }
+      });
     }
-  }, [user, showError, loadUserData]);
+  }, [user, showError, loadUserData, runMutation]);
 
   const updateExpense = useCallback(async (id: string, updates: Partial<Expense>) => {
     setData(prev => ({
@@ -487,15 +509,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       expenses: prev.expenses.map(e => e.id === id ? { ...e, ...updates } : e)
     }));
     if (user) {
-      try {
-        await database.updateExpense(user.id, id, updates);
-      } catch (error) {
-        console.error('Failed to update expense:', error);
-        showError('Erro ao atualizar despesa. Recarregando dados...');
-        loadUserData(user.id, true);
-      }
+      await runMutation(async () => {
+        try {
+          await database.updateExpense(user.id, id, updates);
+        } catch (error) {
+          console.error('Failed to update expense:', error);
+          showError('Erro ao atualizar despesa. Recarregando dados...');
+          loadUserData(user.id, true);
+        }
+      });
     }
-  }, [user, showError, loadUserData]);
+  }, [user, showError, loadUserData, runMutation]);
 
   const toggleExpensePayment = useCallback(async (id: string, dateReference: Date) => {
     let updatedExpense: Expense | undefined;
@@ -534,15 +558,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
 
     if (user && updatedExpense) {
-      try {
-        await database.updateExpense(user.id, id, updatedExpense);
-      } catch (error) {
-        console.error('Failed to toggle expense payment:', error);
-        showError('Erro ao atualizar pagamento. Recarregando dados...');
-        loadUserData(user.id, true);
-      }
+      const expenseToSave = updatedExpense;
+      await runMutation(async () => {
+        try {
+          await database.updateExpense(user.id, id, expenseToSave);
+        } catch (error) {
+          console.error('Failed to toggle expense payment:', error);
+          showError('Erro ao atualizar pagamento. Recarregando dados...');
+          loadUserData(user.id, true);
+        }
+      });
     }
-  }, [user, showError, loadUserData]);
+  }, [user, showError, loadUserData, runMutation]);
 
   const bulkMarkExpenseAsPaid = useCallback(async (id: string, monthsStr: string[]) => {
     let updatedExpense: Expense | undefined;
@@ -565,15 +592,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
 
     if (user && updatedExpense) {
-      try {
-        await database.updateExpense(user.id, id, { paymentHistory: updatedExpense.paymentHistory });
-      } catch (error) {
-        console.error('Failed to bulk mark expense:', error);
-        showError('Erro ao marcar pagamentos. Recarregando dados...');
-        loadUserData(user.id, true);
-      }
+      const historyToSave = updatedExpense.paymentHistory;
+      await runMutation(async () => {
+        try {
+          await database.updateExpense(user.id, id, { paymentHistory: historyToSave });
+        } catch (error) {
+          console.error('Failed to bulk mark expense:', error);
+          showError('Erro ao marcar pagamentos. Recarregando dados...');
+          loadUserData(user.id, true);
+        }
+      });
     }
-  }, [user, showError, loadUserData]);
+  }, [user, showError, loadUserData, runMutation]);
 
   const deleteExpense = useCallback(async (id: string) => {
     setData(prev => ({
@@ -581,15 +611,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       expenses: prev.expenses.filter(e => e.id !== id)
     }));
     if (user) {
-      try {
-        await database.deleteExpense(user.id, id);
-      } catch (error) {
-        console.error('Failed to delete expense:', error);
-        showError('Erro ao excluir despesa. Recarregando dados...');
-        loadUserData(user.id, true);
-      }
+      await runMutation(async () => {
+        try {
+          await database.deleteExpense(user.id, id);
+        } catch (error) {
+          console.error('Failed to delete expense:', error);
+          showError('Erro ao excluir despesa. Recarregando dados...');
+          loadUserData(user.id, true);
+        }
+      });
     }
-  }, [user, showError, loadUserData]);
+  }, [user, showError, loadUserData, runMutation]);
 
   const convertCurrency = useCallback((amount: number, from: Currency, to: Currency) => {
     if (from === to) return amount;
