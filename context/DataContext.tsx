@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AppData, Project, ProjectStatus, WorkLog, AppSettings, Currency, UserProfile, Expense, Payment, DateRange, ProjectContractType, ProjectType, Client, PaymentStatus, ProjectAdjustment, CalendarEvent } from '../types';
 import { safeFloat } from '../utils/format';
 import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
 import { database } from '../lib/database';
 
 interface DataContextType {
@@ -83,66 +84,111 @@ const INITIAL_DATA: AppData = {
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { showError } = useToast();
   const [data, setData] = useState<AppData>(INITIAL_DATA);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>('THIS_MONTH');
+  const lastUserId = useRef<string | null>(null);
+  const dataLoaded = useRef(false);
+
+  const loadUserData = useCallback(async (userId: string, isBackgroundRefresh = false) => {
+    if (!isBackgroundRefresh) {
+      setLoading(true);
+    }
+    try {
+      const [profile, settings, clients, projects, expenses] = await Promise.all([
+        database.getUserProfile(userId),
+        database.getUserSettings(userId),
+        database.getClients(userId),
+        database.getProjects(userId),
+        database.getExpenses(userId)
+      ]);
+
+      let finalProfile = profile;
+
+      if (!profile) {
+        const metadata = user?.user_metadata || {};
+        const oauthName = metadata.full_name || metadata.name || metadata.user_name || '';
+        const oauthAvatar = metadata.avatar_url || metadata.picture || '';
+        
+        if (oauthName) {
+          const newProfile: UserProfile = {
+            name: oauthName,
+            title: 'Freelancer',
+            location: '',
+            taxId: '',
+            pixKey: '',
+            avatar: oauthAvatar
+          };
+          await database.updateUserProfile(userId, newProfile);
+          finalProfile = newProfile;
+        }
+      }
+
+      setData({
+        userProfile: finalProfile || INITIAL_DATA.userProfile,
+        settings: settings || DEFAULT_SETTINGS,
+        clients: clients || [],
+        projects: projects || [],
+        expenses: expenses || []
+      });
+      dataLoaded.current = true;
+    } catch (error) {
+      console.error('Failed to load data:', error);
+      if (!isBackgroundRefresh) {
+        showError('Erro ao carregar dados. Verifique sua conexão.');
+      }
+    }
+    if (!isBackgroundRefresh) {
+      setLoading(false);
+    }
+  }, [user?.user_metadata, showError]);
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!user) {
+    if (authLoading) {
+      return;
+    }
+
+    if (!user) {
+      if (lastUserId.current !== null) {
         setData(INITIAL_DATA);
-        setLoading(false);
-        return;
+        dataLoaded.current = false;
       }
-
-      setLoading(true);
-      try {
-        const [profile, settings, clients, projects, expenses] = await Promise.all([
-          database.getUserProfile(user.id),
-          database.getUserSettings(user.id),
-          database.getClients(user.id),
-          database.getProjects(user.id),
-          database.getExpenses(user.id)
-        ]);
-
-        let finalProfile = profile;
-
-        if (!profile) {
-          const metadata = user.user_metadata || {};
-          const oauthName = metadata.full_name || metadata.name || metadata.user_name || '';
-          const oauthAvatar = metadata.avatar_url || metadata.picture || '';
-          
-          if (oauthName) {
-            const newProfile: UserProfile = {
-              name: oauthName,
-              title: 'Freelancer',
-              location: '',
-              taxId: '',
-              pixKey: '',
-              avatar: oauthAvatar
-            };
-            await database.updateUserProfile(user.id, newProfile);
-            finalProfile = newProfile;
-          }
-        }
-
-        setData({
-          userProfile: finalProfile || INITIAL_DATA.userProfile,
-          settings: settings || DEFAULT_SETTINGS,
-          clients: clients || [],
-          projects: projects || [],
-          expenses: expenses || []
-        });
-      } catch (error) {
-        console.error('Failed to load data:', error);
-        setData(INITIAL_DATA);
-      }
+      lastUserId.current = null;
       setLoading(false);
+      return;
+    }
+
+    if (lastUserId.current !== user.id || !dataLoaded.current) {
+      lastUserId.current = user.id;
+      loadUserData(user.id);
+    } else {
+      setLoading(false);
+    }
+  }, [user, authLoading, loadUserData]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user && dataLoaded.current) {
+        loadUserData(user.id, true);
+      }
     };
 
-    loadData();
-  }, [user]);
+    const handleFocus = () => {
+      if (user && dataLoaded.current) {
+        loadUserData(user.id, true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user, loadUserData]);
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
@@ -246,37 +292,58 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [data.clients, addClient]);
 
   const addProject = useCallback(async (project: Project) => {
+    const previousData = data;
     setData(prev => ({ ...prev, projects: [project, ...prev.projects] }));
     if (user) {
-      const newId = await database.addProject(user.id, project);
-      if (newId && newId !== project.id) {
-        setData(prev => ({
-          ...prev,
-          projects: prev.projects.map(p => p.id === project.id ? { ...p, id: newId } : p)
-        }));
+      try {
+        const newId = await database.addProject(user.id, project);
+        if (newId && newId !== project.id) {
+          setData(prev => ({
+            ...prev,
+            projects: prev.projects.map(p => p.id === project.id ? { ...p, id: newId } : p)
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to add project:', error);
+        setData(previousData);
+        showError('Erro ao salvar projeto. Tente novamente.');
       }
     }
-  }, [user]);
+  }, [user, data, showError]);
 
   const updateProject = useCallback(async (id: string, updates: Partial<Project>) => {
+    const previousProjects = data.projects;
     setData(prev => ({
       ...prev,
       projects: prev.projects.map(p => p.id === id ? { ...p, ...updates } : p)
     }));
     if (user) {
-      await database.updateProject(user.id, id, updates);
+      try {
+        await database.updateProject(user.id, id, updates);
+      } catch (error) {
+        console.error('Failed to update project:', error);
+        setData(prev => ({ ...prev, projects: previousProjects }));
+        showError('Erro ao atualizar projeto. Tente novamente.');
+      }
     }
-  }, [user]);
+  }, [user, data.projects, showError]);
 
   const deleteProject = useCallback(async (id: string) => {
+    const previousProjects = data.projects;
     setData(prev => ({
       ...prev,
       projects: prev.projects.filter(p => p.id !== id)
     }));
     if (user) {
-      await database.deleteProject(user.id, id);
+      try {
+        await database.deleteProject(user.id, id);
+      } catch (error) {
+        console.error('Failed to delete project:', error);
+        setData(prev => ({ ...prev, projects: previousProjects }));
+        showError('Erro ao excluir projeto. Tente novamente.');
+      }
     }
-  }, [user]);
+  }, [user, data.projects, showError]);
 
   const duplicateProject = useCallback((id: string): string | null => {
     const newId = Date.now().toString();
@@ -399,29 +466,44 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const addExpense = useCallback(async (expense: Expense) => {
+    const previousExpenses = data.expenses;
     setData(prev => ({ ...prev, expenses: [expense, ...prev.expenses] }));
     if (user) {
-      const newId = await database.addExpense(user.id, expense);
-      if (newId && newId !== expense.id) {
-        setData(prev => ({
-          ...prev,
-          expenses: prev.expenses.map(e => e.id === expense.id ? { ...e, id: newId } : e)
-        }));
+      try {
+        const newId = await database.addExpense(user.id, expense);
+        if (newId && newId !== expense.id) {
+          setData(prev => ({
+            ...prev,
+            expenses: prev.expenses.map(e => e.id === expense.id ? { ...e, id: newId } : e)
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to add expense:', error);
+        setData(prev => ({ ...prev, expenses: previousExpenses }));
+        showError('Erro ao salvar despesa. Tente novamente.');
       }
     }
-  }, [user]);
+  }, [user, data.expenses, showError]);
 
   const updateExpense = useCallback(async (id: string, updates: Partial<Expense>) => {
+    const previousExpenses = data.expenses;
     setData(prev => ({
       ...prev,
       expenses: prev.expenses.map(e => e.id === id ? { ...e, ...updates } : e)
     }));
     if (user) {
-      await database.updateExpense(user.id, id, updates);
+      try {
+        await database.updateExpense(user.id, id, updates);
+      } catch (error) {
+        console.error('Failed to update expense:', error);
+        setData(prev => ({ ...prev, expenses: previousExpenses }));
+        showError('Erro ao atualizar despesa. Tente novamente.');
+      }
     }
-  }, [user]);
+  }, [user, data.expenses, showError]);
 
   const toggleExpensePayment = useCallback(async (id: string, dateReference: Date) => {
+    const previousExpenses = data.expenses;
     let updatedExpense: Expense | undefined;
     
     setData(prev => ({
@@ -458,11 +540,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
 
     if (user && updatedExpense) {
-      await database.updateExpense(user.id, id, updatedExpense);
+      try {
+        await database.updateExpense(user.id, id, updatedExpense);
+      } catch (error) {
+        console.error('Failed to toggle expense payment:', error);
+        setData(prev => ({ ...prev, expenses: previousExpenses }));
+        showError('Erro ao atualizar pagamento. Tente novamente.');
+      }
     }
-  }, [user]);
+  }, [user, data.expenses, showError]);
 
   const bulkMarkExpenseAsPaid = useCallback(async (id: string, monthsStr: string[]) => {
+    const previousExpenses = data.expenses;
     let updatedExpense: Expense | undefined;
 
     setData(prev => ({
@@ -483,19 +572,32 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
 
     if (user && updatedExpense) {
-      await database.updateExpense(user.id, id, { paymentHistory: updatedExpense.paymentHistory });
+      try {
+        await database.updateExpense(user.id, id, { paymentHistory: updatedExpense.paymentHistory });
+      } catch (error) {
+        console.error('Failed to bulk mark expense:', error);
+        setData(prev => ({ ...prev, expenses: previousExpenses }));
+        showError('Erro ao marcar pagamentos. Tente novamente.');
+      }
     }
-  }, [user]);
+  }, [user, data.expenses, showError]);
 
   const deleteExpense = useCallback(async (id: string) => {
+    const previousExpenses = data.expenses;
     setData(prev => ({
       ...prev,
       expenses: prev.expenses.filter(e => e.id !== id)
     }));
     if (user) {
-      await database.deleteExpense(user.id, id);
+      try {
+        await database.deleteExpense(user.id, id);
+      } catch (error) {
+        console.error('Failed to delete expense:', error);
+        setData(prev => ({ ...prev, expenses: previousExpenses }));
+        showError('Erro ao excluir despesa. Tente novamente.');
+      }
     }
-  }, [user]);
+  }, [user, data.expenses, showError]);
 
   const convertCurrency = useCallback((amount: number, from: Currency, to: Currency) => {
     if (from === to) return amount;

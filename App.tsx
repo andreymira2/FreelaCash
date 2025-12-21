@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import { DataProvider } from './context/DataContext';
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
@@ -24,8 +25,9 @@ import OnboardingGuard from './components/OnboardingGuard';
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <DataProvider>
-        <BrowserRouter>
+      <ToastProvider>
+        <DataProvider>
+          <BrowserRouter>
           <Routes>
             {/* Public Routes - redirect to dashboard if already logged in */}
             <Route path="/welcome" element={<PublicRoute><Landing /></PublicRoute>} />
@@ -62,8 +64,9 @@ const App: React.FC = () => {
             {/* Catch all - redirect to landing */}
             <Route path="*" element={<Navigate to="/welcome" replace />} />
           </Routes>
-        </BrowserRouter>
-      </DataProvider>
+          </BrowserRouter>
+        </DataProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 };
