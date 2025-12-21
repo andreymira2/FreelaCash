@@ -1,9 +1,11 @@
 
 import React, { useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import { Card, Input, Button, Select, Avatar, CurrencyDisplay, PageHeader } from '../components/ui';
 import { Currency, CURRENCY_SYMBOLS } from '../types';
-import { Save, User, Download, Upload, Database, Globe, BadgeCheck, CreditCard, HardDrive, BookOpen, DollarSign, CheckCircle2, LayoutDashboard, FolderKanban, Wallet, Printer, Monitor, WifiOff, Camera } from 'lucide-react';
+import { Save, User, Download, Upload, Database, Globe, BadgeCheck, CreditCard, HardDrive, BookOpen, DollarSign, CheckCircle2, LayoutDashboard, FolderKanban, Wallet, Printer, Monitor, WifiOff, Camera, LogOut } from 'lucide-react';
 
 const DarkCard = ({ children, className = '' }: any) => (
     <div className={`bg-base-card text-white p-6 rounded-2xl border border-white/5 ${className}`}>
@@ -26,6 +28,8 @@ const DarkInput = React.memo(({ label, value, onChange, ...props }: any) => (
 
 const Settings: React.FC = () => {
     const { settings, userProfile, updateSettings, updateUserProfile, exportData, importData, loadDemoData, projects, clients, expenses, getFutureRecurringIncome } = useData();
+    const { signOut } = useAuth();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'PROFILE' | 'APP' | 'DATA' | 'HELP'>('PROFILE');
 
     const [settingsForm, setSettingsForm] = useState(settings);
@@ -326,10 +330,24 @@ const Settings: React.FC = () => {
                             </div>
                         </DarkCard>
 
-                        <div className="pt-8 border-t border-white/10">
+                        <div className="pt-8 border-t border-white/10 space-y-4">
                             <h3 className="text-sm font-bold text-ink-dim uppercase tracking-wider mb-4">Zona de Perigo</h3>
                             <Button variant="danger" onClick={() => { if (window.confirm("Sobrescrever tudo com dados de demonstração?")) loadDemoData() }} className="w-full bg-semantic-red/10 text-semantic-red hover:bg-semantic-red/20 border border-semantic-red/20">
                                 <Database size={16} className="mr-2" /> Carregar Dados Demo (Reseta o App)
+                            </Button>
+                        </div>
+
+                        <div className="pt-8 border-t border-white/10">
+                            <h3 className="text-sm font-bold text-ink-dim uppercase tracking-wider mb-4">Conta</h3>
+                            <Button 
+                                variant="outline" 
+                                onClick={async () => { 
+                                    await signOut(); 
+                                    navigate('/welcome'); 
+                                }} 
+                                className="w-full border-white/10 text-white hover:bg-white/5"
+                            >
+                                <LogOut size={16} className="mr-2" /> Sair da Conta
                             </Button>
                         </div>
                     </div>

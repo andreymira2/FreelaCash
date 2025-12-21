@@ -1,12 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import { Button, Input, Select, Card } from '../components/ui';
 import { Currency } from '../types';
 import { Rocket, ArrowRight, Camera, User } from 'lucide-react';
 
 const SetupProfile: React.FC = () => {
     const { updateUserProfile, updateSettings, userProfile } = useData();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,7 +61,9 @@ const SetupProfile: React.FC = () => {
 
     const handleSkip = async () => {
         setSaving(true);
-        await updateUserProfile({ name: 'Freelancer' });
+        const metadata = user?.user_metadata;
+        const defaultName = metadata?.full_name || metadata?.name || metadata?.user_name || 'Meu Perfil';
+        await updateUserProfile({ name: defaultName });
         navigate('/');
     };
 

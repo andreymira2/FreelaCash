@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import PrivateRoute from './components/PrivateRoute';
+import PublicRoute from './components/PublicRoute';
 import Layout from './components/Layout';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -26,10 +27,10 @@ const App: React.FC = () => {
       <DataProvider>
         <BrowserRouter>
           <Routes>
-            {/* Public Routes */}
-            <Route path="/welcome" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+            {/* Public Routes - redirect to dashboard if already logged in */}
+            <Route path="/welcome" element={<PublicRoute><Landing /></PublicRoute>} />
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
 
             {/* Setup Profile Route */}
             <Route path="/setup-profile" element={
