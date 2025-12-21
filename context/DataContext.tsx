@@ -292,7 +292,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [data.clients, addClient]);
 
   const addProject = useCallback(async (project: Project) => {
-    const previousData = data;
     setData(prev => ({ ...prev, projects: [project, ...prev.projects] }));
     if (user) {
       try {
@@ -305,14 +304,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (error) {
         console.error('Failed to add project:', error);
-        setData(previousData);
-        showError('Erro ao salvar projeto. Tente novamente.');
+        showError('Erro ao salvar projeto. Recarregando dados...');
+        loadUserData(user.id, true);
       }
     }
-  }, [user, data, showError]);
+  }, [user, showError, loadUserData]);
 
   const updateProject = useCallback(async (id: string, updates: Partial<Project>) => {
-    const previousProjects = data.projects;
     setData(prev => ({
       ...prev,
       projects: prev.projects.map(p => p.id === id ? { ...p, ...updates } : p)
@@ -322,14 +320,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await database.updateProject(user.id, id, updates);
       } catch (error) {
         console.error('Failed to update project:', error);
-        setData(prev => ({ ...prev, projects: previousProjects }));
-        showError('Erro ao atualizar projeto. Tente novamente.');
+        showError('Erro ao atualizar projeto. Recarregando dados...');
+        loadUserData(user.id, true);
       }
     }
-  }, [user, data.projects, showError]);
+  }, [user, showError, loadUserData]);
 
   const deleteProject = useCallback(async (id: string) => {
-    const previousProjects = data.projects;
     setData(prev => ({
       ...prev,
       projects: prev.projects.filter(p => p.id !== id)
@@ -339,11 +336,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await database.deleteProject(user.id, id);
       } catch (error) {
         console.error('Failed to delete project:', error);
-        setData(prev => ({ ...prev, projects: previousProjects }));
-        showError('Erro ao excluir projeto. Tente novamente.');
+        showError('Erro ao excluir projeto. Recarregando dados...');
+        loadUserData(user.id, true);
       }
     }
-  }, [user, data.projects, showError]);
+  }, [user, showError, loadUserData]);
 
   const duplicateProject = useCallback((id: string): string | null => {
     const newId = Date.now().toString();
@@ -466,7 +463,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const addExpense = useCallback(async (expense: Expense) => {
-    const previousExpenses = data.expenses;
     setData(prev => ({ ...prev, expenses: [expense, ...prev.expenses] }));
     if (user) {
       try {
@@ -479,14 +475,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (error) {
         console.error('Failed to add expense:', error);
-        setData(prev => ({ ...prev, expenses: previousExpenses }));
-        showError('Erro ao salvar despesa. Tente novamente.');
+        showError('Erro ao salvar despesa. Recarregando dados...');
+        loadUserData(user.id, true);
       }
     }
-  }, [user, data.expenses, showError]);
+  }, [user, showError, loadUserData]);
 
   const updateExpense = useCallback(async (id: string, updates: Partial<Expense>) => {
-    const previousExpenses = data.expenses;
     setData(prev => ({
       ...prev,
       expenses: prev.expenses.map(e => e.id === id ? { ...e, ...updates } : e)
@@ -496,14 +491,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await database.updateExpense(user.id, id, updates);
       } catch (error) {
         console.error('Failed to update expense:', error);
-        setData(prev => ({ ...prev, expenses: previousExpenses }));
-        showError('Erro ao atualizar despesa. Tente novamente.');
+        showError('Erro ao atualizar despesa. Recarregando dados...');
+        loadUserData(user.id, true);
       }
     }
-  }, [user, data.expenses, showError]);
+  }, [user, showError, loadUserData]);
 
   const toggleExpensePayment = useCallback(async (id: string, dateReference: Date) => {
-    const previousExpenses = data.expenses;
     let updatedExpense: Expense | undefined;
     
     setData(prev => ({
@@ -544,14 +538,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await database.updateExpense(user.id, id, updatedExpense);
       } catch (error) {
         console.error('Failed to toggle expense payment:', error);
-        setData(prev => ({ ...prev, expenses: previousExpenses }));
-        showError('Erro ao atualizar pagamento. Tente novamente.');
+        showError('Erro ao atualizar pagamento. Recarregando dados...');
+        loadUserData(user.id, true);
       }
     }
-  }, [user, data.expenses, showError]);
+  }, [user, showError, loadUserData]);
 
   const bulkMarkExpenseAsPaid = useCallback(async (id: string, monthsStr: string[]) => {
-    const previousExpenses = data.expenses;
     let updatedExpense: Expense | undefined;
 
     setData(prev => ({
@@ -576,14 +569,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await database.updateExpense(user.id, id, { paymentHistory: updatedExpense.paymentHistory });
       } catch (error) {
         console.error('Failed to bulk mark expense:', error);
-        setData(prev => ({ ...prev, expenses: previousExpenses }));
-        showError('Erro ao marcar pagamentos. Tente novamente.');
+        showError('Erro ao marcar pagamentos. Recarregando dados...');
+        loadUserData(user.id, true);
       }
     }
-  }, [user, data.expenses, showError]);
+  }, [user, showError, loadUserData]);
 
   const deleteExpense = useCallback(async (id: string) => {
-    const previousExpenses = data.expenses;
     setData(prev => ({
       ...prev,
       expenses: prev.expenses.filter(e => e.id !== id)
@@ -593,11 +585,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await database.deleteExpense(user.id, id);
       } catch (error) {
         console.error('Failed to delete expense:', error);
-        setData(prev => ({ ...prev, expenses: previousExpenses }));
-        showError('Erro ao excluir despesa. Tente novamente.');
+        showError('Erro ao excluir despesa. Recarregando dados...');
+        loadUserData(user.id, true);
       }
     }
-  }, [user, data.expenses, showError]);
+  }, [user, showError, loadUserData]);
 
   const convertCurrency = useCallback((amount: number, from: Currency, to: Currency) => {
     if (from === to) return amount;
