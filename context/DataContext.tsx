@@ -118,7 +118,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const metadata = user?.user_metadata || {};
         const oauthName = metadata.full_name || metadata.name || metadata.user_name || '';
         const oauthAvatar = metadata.avatar_url || metadata.picture || '';
-        
+
         if (oauthName) {
           const newProfile: UserProfile = {
             name: oauthName,
@@ -297,16 +297,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getOrCreateClientByName = useCallback((name: string): Client => {
     const trimmedName = name.trim();
     const normalizedName = trimmedName.toLowerCase();
-    
+
     const existing = data.clients.find(c => c.name.toLowerCase() === normalizedName);
     if (existing) return existing;
-    
+
     const newClient: Client = {
       id: `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: trimmedName,
       createdAt: Date.now()
     };
-    
+
     addClient(newClient);
     return newClient;
   }, [data.clients, addClient]);
@@ -365,12 +365,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const duplicateProject = useCallback((id: string): string | null => {
     const newId = Date.now().toString();
     let foundOriginal = false;
-    
+
     setData(prev => {
       const original = prev.projects.find(p => p.id === id);
       if (!original) return prev;
       foundOriginal = true;
-      
+
       const duplicated: Project = {
         ...original,
         id: newId,
@@ -381,10 +381,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logs: [],
         adjustments: [],
         events: [],
-        checklist: original.checklist?.map((t, idx) => ({ 
-          ...t, 
-          id: `${newId}-task-${idx}-${Math.random().toString(36).substr(2, 9)}`, 
-          completed: false 
+        checklist: original.checklist?.map((t, idx) => ({
+          ...t,
+          id: `${newId}-task-${idx}-${Math.random().toString(36).substr(2, 9)}`,
+          completed: false
         })),
         status: ProjectStatus.ACTIVE,
       };
@@ -392,10 +392,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user) {
         database.addProject(user.id, duplicated);
       }
-      
+
       return { ...prev, projects: [duplicated, ...prev.projects] };
     });
-    
+
     return foundOriginal ? newId : null;
   }, [user]);
 
@@ -522,88 +522,94 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, showError, loadUserData, runMutation]);
 
   const toggleExpensePayment = useCallback(async (id: string, dateReference: Date) => {
-    let updatedExpense: Expense | undefined;
-    
+    if (!user) return;
+
+    // 1. Buscar a despesa antes de fazer qualquer atualização
+    const expense = data.expenses.find(e => e.id === id);
+    if (!expense) return;
+
+    // 2. Construir o payload de atualização EXPLICITAMENTE
+    const updatePayload: Partial<Expense> = {};
+
+    if (expense.isRecurring) {
+      const year = dateReference.getFullYear();
+      const month = dateReference.getMonth() + 1;
+      const monthStr = `${year}-${month.toString().padStart(2, '0')}`;
+
+      const history = expense.paymentHistory || [];
+      const existingIndex = history.findIndex(h => h.monthStr === monthStr);
+      let newHistory = [...history];
+
+      if (existingIndex >= 0 && history[existingIndex].status === 'PAID') {
+        newHistory.splice(existingIndex, 1);
+      } else {
+        const newEntry = { monthStr, status: 'PAID' as const, paidDate: new Date().toISOString() };
+        if (existingIndex >= 0) {
+          newHistory[existingIndex] = newEntry;
+        } else {
+          newHistory.push(newEntry);
+        }
+      }
+      updatePayload.paymentHistory = newHistory;
+    } else {
+      updatePayload.status = expense.status === 'PAID' ? 'PENDING' : 'PAID';
+    }
+
+    // 3. Aplicar a mesma atualização no estado local
     setData(prev => ({
       ...prev,
-      expenses: prev.expenses.map(e => {
-        if (e.id !== id) return e;
-
-        if (e.isRecurring) {
-          const year = dateReference.getFullYear();
-          const month = dateReference.getMonth() + 1;
-          const monthStr = `${year}-${month.toString().padStart(2, '0')}`;
-
-          const history = e.paymentHistory || [];
-          const existingIndex = history.findIndex(h => h.monthStr === monthStr);
-          let newHistory = [...history];
-
-          if (existingIndex >= 0 && history[existingIndex].status === 'PAID') {
-            newHistory.splice(existingIndex, 1);
-          } else {
-            const newEntry = { monthStr, status: 'PAID' as const, paidDate: new Date().toISOString() };
-            if (existingIndex >= 0) {
-              newHistory[existingIndex] = newEntry;
-            } else {
-              newHistory.push(newEntry);
-            }
-          }
-          updatedExpense = { ...e, paymentHistory: newHistory };
-          return updatedExpense;
-        } else {
-          updatedExpense = { ...e, status: e.status === 'PAID' ? 'PENDING' : 'PAID' };
-          return updatedExpense;
-        }
-      })
+      expenses: prev.expenses.map(e =>
+        e.id === id ? { ...e, ...updatePayload } : e
+      )
     }));
 
-    if (user && updatedExpense) {
-      const expenseToSave = updatedExpense;
-      await runMutation(async () => {
-        try {
-          await database.updateExpense(user.id, id, expenseToSave);
-        } catch (error) {
-          console.error('Failed to toggle expense payment:', error);
-          showError('Erro ao atualizar pagamento. Recarregando dados...');
-          loadUserData(user.id, true);
-        }
-      });
-    }
-  }, [user, showError, loadUserData, runMutation]);
+    // 4. Salvar no banco com o MESMO payload
+    await runMutation(async () => {
+      try {
+        await database.updateExpense(user.id, id, updatePayload);
+      } catch (error) {
+        console.error('Failed to toggle expense payment:', error);
+        showError('Erro ao atualizar pagamento. Recarregando dados...');
+        loadUserData(user.id, true);
+      }
+    });
+  }, [user, data.expenses, showError, loadUserData, runMutation]);
 
   const bulkMarkExpenseAsPaid = useCallback(async (id: string, monthsStr: string[]) => {
-    let updatedExpense: Expense | undefined;
+    if (!user) return;
 
+    // 1. Buscar a despesa antes de atualizar
+    const expense = data.expenses.find(e => e.id === id);
+    if (!expense || !expense.isRecurring) return;
+
+    // 2. Construir o payload explicitamente
+    const currentHistory = expense.paymentHistory || [];
+    const newEntries = monthsStr
+      .filter(m => !currentHistory.some(h => h.monthStr === m && h.status === 'PAID'))
+      .map(m => ({ monthStr: m, status: 'PAID' as const, paidDate: new Date().toISOString() }));
+
+    const updatedHistory = [...currentHistory, ...newEntries];
+    const updatePayload: Partial<Expense> = { paymentHistory: updatedHistory };
+
+    // 3. Atualizar estado local com o mesmo payload
     setData(prev => ({
       ...prev,
-      expenses: prev.expenses.map(e => {
-        if (e.id !== id) return e;
-        if (!e.isRecurring) return e;
-
-        const currentHistory = e.paymentHistory || [];
-        const newEntries = monthsStr
-          .filter(m => !currentHistory.some(h => h.monthStr === m && h.status === 'PAID'))
-          .map(m => ({ monthStr: m, status: 'PAID' as const, paidDate: new Date().toISOString() }));
-
-        const updatedHistory = [...currentHistory, ...newEntries];
-        updatedExpense = { ...e, paymentHistory: updatedHistory };
-        return updatedExpense;
-      })
+      expenses: prev.expenses.map(e =>
+        e.id === id ? { ...e, ...updatePayload } : e
+      )
     }));
 
-    if (user && updatedExpense) {
-      const historyToSave = updatedExpense.paymentHistory;
-      await runMutation(async () => {
-        try {
-          await database.updateExpense(user.id, id, { paymentHistory: historyToSave });
-        } catch (error) {
-          console.error('Failed to bulk mark expense:', error);
-          showError('Erro ao marcar pagamentos. Recarregando dados...');
-          loadUserData(user.id, true);
-        }
-      });
-    }
-  }, [user, showError, loadUserData, runMutation]);
+    // 4. Salvar no banco com o MESMO payload
+    await runMutation(async () => {
+      try {
+        await database.updateExpense(user.id, id, updatePayload);
+      } catch (error) {
+        console.error('Failed to bulk mark expense:', error);
+        showError('Erro ao marcar pagamentos. Recarregando dados...');
+        loadUserData(user.id, true);
+      }
+    });
+  }, [user, data.expenses, showError, loadUserData, runMutation]);
 
   const deleteExpense = useCallback(async (id: string) => {
     setData(prev => ({
