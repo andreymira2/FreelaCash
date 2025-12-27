@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Button, Input, Select, Card } from '../components/ui';
-import { Currency } from '../types';
-import { Rocket, ArrowRight, Camera, User } from 'lucide-react';
+import { Currency, UserProfile } from '../types';
+import { Rocket, ArrowRight, Camera, User, PlusCircle, XCircle } from 'lucide-react';
+import { SensitiveInput } from '../components/ui/SensitiveInput';
+import { validateCPF, validatePIX } from '../utils/validation';
 
 const SetupProfile: React.FC = () => {
     const { updateUserProfile, updateSettings, userProfile } = useData();
@@ -17,11 +19,14 @@ const SetupProfile: React.FC = () => {
         title: userProfile.title || 'Design',
         currency: Currency.BRL,
         monthlyGoal: '',
-        pixKey: userProfile.pixKey || ''
+        pixKey: userProfile.pixKey || '',
+        taxId: userProfile.taxId || ''
     });
 
     const [avatar, setAvatar] = useState<string | null>(userProfile.avatar || null);
     const [saving, setSaving] = useState(false);
+    const [showCPFToggle, setShowCPFToggle] = useState(!!userProfile.taxId);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -42,13 +47,30 @@ const SetupProfile: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validation
+        const newErrors: Record<string, string> = {};
+        if (formData.taxId && !validateCPF(formData.taxId)) {
+            newErrors.taxId = 'CPF inválido';
+        }
+        if (formData.pixKey && !validatePIX(formData.pixKey)) {
+            newErrors.pixKey = 'Chave PIX inválida';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            setTimeout(() => setErrors({}), 3000);
+            return;
+        }
+
         setSaving(true);
 
         await updateUserProfile({
             name: formData.name || 'Freelancer',
             title: formData.title,
             avatar: avatar || undefined,
-            pixKey: formData.pixKey
+            pixKey: formData.pixKey,
+            taxId: formData.taxId
         });
 
         await updateSettings({
@@ -142,13 +164,48 @@ const SetupProfile: React.FC = () => {
                                 {areas.map(a => <option key={a} value={a} className="bg-black">{a}</option>)}
                             </Select>
 
-                            <Input
-                                label="Chave PIX (Opcional)"
-                                placeholder="Sua chave PIX"
-                                value={formData.pixKey}
-                                onChange={e => setFormData({ ...formData, pixKey: e.target.value })}
-                                className="bg-[#222] focus:bg-black transition-colors"
-                            />
+                            {showCPFToggle || formData.taxId ? (
+                                <div className="relative">
+                                    <SensitiveInput
+                                        label="CPF (Opcional)"
+                                        placeholder="000.000.000-00"
+                                        value={formData.taxId}
+                                        onChange={e => setFormData({ ...formData, taxId: e.target.value })}
+                                        className="bg-[#222] focus:bg-black transition-colors"
+                                    />
+                                    {errors.taxId && <p className="text-[10px] text-semantic-red font-bold absolute -bottom-1 left-1">{errors.taxId}</p>}
+                                    {!formData.taxId && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCPFToggle(false)}
+                                            className="absolute top-0 right-0 text-ink-dim hover:text-white p-1"
+                                        >
+                                            <XCircle size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-1.5 mb-4 justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCPFToggle(true)}
+                                        className="flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-white/20 bg-white/5 text-ink-gray hover:text-white hover:border-white/40 transition-all text-sm font-bold"
+                                    >
+                                        <PlusCircle size={18} /> Adicionar CPF (opcional)
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="relative">
+                                <SensitiveInput
+                                    label="Chave PIX (Opcional)"
+                                    placeholder="Sua chave PIX"
+                                    value={formData.pixKey}
+                                    onChange={e => setFormData({ ...formData, pixKey: e.target.value })}
+                                    className="bg-[#222] focus:bg-black transition-colors"
+                                />
+                                {errors.pixKey && <p className="text-[10px] text-semantic-red font-bold absolute -bottom-1 left-1">{errors.pixKey}</p>}
+                            </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <Select

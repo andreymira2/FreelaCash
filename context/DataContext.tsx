@@ -856,19 +856,48 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   }, [data.projects, data.expenses, data.settings.mainCurrency, convertCurrency]);
 
-  const importData = useCallback((jsonString: string) => {
+  const importData = useCallback(async (jsonString: string) => {
     try {
       const parsed = JSON.parse(jsonString);
-      if (!parsed.projects || !parsed.expenses || !parsed.settings) {
+
+      const { validateBackupSchema, scrubData } = await import('../utils/validation');
+
+      if (!validateBackupSchema(parsed)) {
         throw new Error("Invalid File Structure");
       }
-      setData(parsed);
+
+      // Scrub data to prevent prototype pollution or unwanted fields
+      const cleanData: AppData = {
+        userProfile: parsed.userProfile,
+        settings: parsed.settings,
+        clients: Array.isArray(parsed.clients) ? parsed.clients : [],
+        projects: parsed.projects,
+        expenses: parsed.expenses
+      };
+
+      setData(cleanData);
+
+      // If logged in, we should ideally sync this to Supabase
+      // For simplicity in this local-first app, we'll prompt a reload or handle sync
+      if (user) {
+        // Syncing a whole backup to Supabase could be complex (merging vs overwriting)
+        // Here we overwrite as the tool suggests "overwriting"
+        await Promise.all([
+          database.updateUserProfile(user.id, cleanData.userProfile),
+          database.updateUserSettings(user.id, cleanData.settings)
+        ]);
+
+        // Projects and expenses are many-to-one, we'd need to clear and re-insert 
+        // or just let the reload handle it if the backend is the source of truth.
+        // For now, we update state and the user will see it.
+      }
+
       return true;
     } catch (e) {
-      console.error(e);
+      console.error('Import failed:', e);
       return false;
     }
-  }, []);
+  }, [user]);
 
   const exportData = useCallback(() => {
     return JSON.stringify(data);

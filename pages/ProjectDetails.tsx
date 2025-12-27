@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { Card, Button, Badge, CurrencyDisplay, Input, Avatar, ProgressBar, Select } from '../components/ui';
+import { Card, Button, Badge, CurrencyDisplay, Input, Avatar, ProgressBar, Select, SensitiveInput } from '../components/ui';
 import BillingModal from '../components/BillingModal';
 import { ProjectStatus, ProjectContractType, Payment, PaymentStatus, Client, Currency, CURRENCY_SYMBOLS } from '../types';
 import { ArrowLeft, Clock, Trash2, DollarSign, Edit2, User, Plus, CheckCircle2, Circle, FileText, Calendar, ShieldCheck, Settings, Send, Copy } from 'lucide-react';
@@ -24,10 +24,12 @@ const ProjectDetails: React.FC = () => {
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [selectedReceiptPayment, setSelectedReceiptPayment] = useState<Payment | null>(null);
     const [showBillingModal, setShowBillingModal] = useState(false);
-    
+
     const [installmentCount, setInstallmentCount] = useState(2);
     const [installmentDate, setInstallmentDate] = useState(toInputDate(new Date().toISOString()));
     const [payFirstNow, setPayFirstNow] = useState(true);
+
+    const [clientForm, setClientForm] = useState<Partial<Client>>({});
 
     const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
     const [paymentAmount, setPaymentAmount] = useState('');
@@ -82,29 +84,58 @@ const ProjectDetails: React.FC = () => {
     };
 
     const resetPaymentForm = () => { setEditingPaymentId(null); setPaymentAmount(''); setPaymentNote(''); setPaymentInvoice(''); setPaymentDate(toInputDate(new Date().toISOString())); setIsAdjustment(false); setAdjustmentDesc(''); };
-    
+
     const openPaymentModal = (paymentToEdit?: Payment) => {
-        if (paymentToEdit) { 
-            setEditingPaymentId(paymentToEdit.id); 
-            setPaymentAmount(paymentToEdit.amount.toString()); 
-            setPaymentDate(toInputDate(paymentToEdit.date)); 
-            setPaymentNote(paymentToEdit.note || ''); 
-            setPaymentInvoice(paymentToEdit.invoiceNumber || ''); 
-            setIsAdjustment(false); 
-        } else { 
-            resetPaymentForm(); 
-            if (totals.remaining > 0) setPaymentAmount(totals.remaining.toFixed(2)); 
+        if (paymentToEdit) {
+            setEditingPaymentId(paymentToEdit.id);
+            setPaymentAmount(paymentToEdit.amount.toString());
+            setPaymentDate(toInputDate(paymentToEdit.date));
+            setPaymentNote(paymentToEdit.note || '');
+            setPaymentInvoice(paymentToEdit.invoiceNumber || '');
+            setIsAdjustment(false);
+        } else {
+            resetPaymentForm();
+            if (totals.remaining > 0) setPaymentAmount(totals.remaining.toFixed(2));
         }
         setShowPaymentModal(true);
+    };
+
+    const openEditClientModal = () => {
+        if (client) {
+            setClientForm({
+                ...client,
+                name: client.name || '',
+                companyName: client.companyName || '',
+                taxId: client.taxId || '',
+                billingEmail: client.billingEmail || '',
+                email: client.email || '',
+                phone: client.phone || ''
+            });
+            setShowEditClient(true);
+        }
     };
 
     const handleConfirmPayment = (pay: Payment) => {
         updatePayment(project.id, { ...pay, status: PaymentStatus.PAID, date: new Date().toISOString() });
     };
 
-    const handleSaveClient = (updatedClient: Client) => {
-        if (updatedClient.id === 'temp') { const newId = Date.now().toString(); addClient({ ...updatedClient, id: newId }); updateProject(project.id, { clientId: newId, clientName: updatedClient.name }); }
-        else { updateClient(updatedClient.id, updatedClient); if (updatedClient.name !== project.clientName) updateProject(project.id, { clientName: updatedClient.name }); }
+    const handleSaveClient = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!clientForm.name) return;
+
+        const updatedClient = {
+            ...client!,
+            ...clientForm
+        } as Client;
+
+        if (updatedClient.id === 'temp') {
+            const newId = Date.now().toString();
+            addClient({ ...updatedClient, id: newId });
+            updateProject(project.id, { clientId: newId, clientName: updatedClient.name });
+        } else {
+            updateClient(updatedClient.id, updatedClient);
+            if (updatedClient.name !== project.clientName) updateProject(project.id, { clientName: updatedClient.name });
+        }
         setShowEditClient(false);
     };
 
@@ -120,15 +151,15 @@ const ProjectDetails: React.FC = () => {
         if (installmentCount < 2 || totals.remaining <= 0) return;
         const amountPerPart = totals.remaining / installmentCount;
         for (let i = 0; i < installmentCount; i++) {
-            const d = new Date(`${installmentDate}T12:00:00`); 
+            const d = new Date(`${installmentDate}T12:00:00`);
             d.setMonth(d.getMonth() + i);
             const isFirst = i === 0;
-            addPayment(project.id, { 
-                id: Date.now().toString() + i, 
-                date: d.toISOString(), 
-                amount: amountPerPart, 
-                note: `Parcela ${i + 1}/${installmentCount}`, 
-                status: (isFirst && payFirstNow) ? PaymentStatus.PAID : PaymentStatus.SCHEDULED 
+            addPayment(project.id, {
+                id: Date.now().toString() + i,
+                date: d.toISOString(),
+                amount: amountPerPart,
+                note: `Parcela ${i + 1}/${installmentCount}`,
+                status: (isFirst && payFirstNow) ? PaymentStatus.PAID : PaymentStatus.SCHEDULED
             });
         }
         setShowInstallmentModal(false);
@@ -275,7 +306,7 @@ const ProjectDetails: React.FC = () => {
                                                 <CurrencyDisplay amount={pay.amount} currency={project.currency} />
                                             </p>
                                             <p className="text-xs text-ink-gray flex items-center gap-1 flex-wrap">
-                                                {new Date(pay.date).toLocaleDateString()} • {pay.note || 'Pagamento'} 
+                                                {new Date(pay.date).toLocaleDateString()} • {pay.note || 'Pagamento'}
                                                 {isOverdue && <span className="text-semantic-red font-bold ml-1">ATRASADO</span>}
                                             </p>
                                         </div>
@@ -330,7 +361,7 @@ const ProjectDetails: React.FC = () => {
                 <Card>
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-white flex items-center gap-2"><User size={18} className="text-semantic-blue" /> Cliente</h3>
-                        <Button variant="ghost" className="h-8 text-xs" onClick={() => setShowEditClient(true)}>Editar</Button>
+                        <Button variant="ghost" className="h-8 text-xs" onClick={openEditClientModal}>Editar</Button>
                     </div>
                     <div className="flex items-center gap-4">
                         <Avatar name={project.clientName} className="w-12 h-12" />
@@ -401,40 +432,108 @@ const ProjectDetails: React.FC = () => {
             {/* Payment Modal */}
             {showPaymentModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-md border border-white/10 shadow-2xl">
-                        <h3 className="text-xl font-bold text-white mb-6">{editingPaymentId ? 'Editar Pagamento' : 'Novo Pagamento'}</h3>
+                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-md border border-white/10 shadow-2xl transition-all animate-in zoom-in-95 duration-200">
+                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight flex items-center gap-2">
+                            <DollarSign size={24} className="text-brand" />
+                            {editingPaymentId ? 'Editar Pagamento' : 'Novo Pagamento'}
+                        </h3>
                         <form onSubmit={handlePaymentSubmit} className="space-y-4">
-                            <Input label="Valor" type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} required autoFocus />
+                            <Input label="Valor" type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} required autoFocus placeholder="0.00" />
                             <Input label="Data" type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} required />
                             <Input label="Descrição / Nota" value={paymentNote} onChange={e => setPaymentNote(e.target.value)} placeholder="Ex: Entrada parcial" />
                             <Input label="Nº Nota Fiscal (Opcional)" value={paymentInvoice} onChange={e => setPaymentInvoice(e.target.value)} placeholder="0001" />
-                            
+
                             {!editingPaymentId && (
-                                <label className="flex items-center gap-3 p-4 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-colors">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={isAdjustment} 
-                                        onChange={e => setIsAdjustment(e.target.checked)} 
+                                <label className="flex items-center gap-3 p-4 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-colors border border-white/5">
+                                    <input
+                                        type="checkbox"
+                                        checked={isAdjustment}
+                                        onChange={e => setIsAdjustment(e.target.checked)}
                                         className="w-5 h-5 rounded bg-white/10 border-white/20 accent-brand"
                                     />
                                     <div>
                                         <span className="text-sm text-white font-medium">É um ajuste (extra)</span>
-                                        <p className="text-xs text-ink-gray">Acréscimo ao valor original do projeto</p>
+                                        <p className="text-xs text-ink-gray">Aumenta o orçamento total do projeto</p>
                                     </div>
                                 </label>
                             )}
-                            
+
                             {isAdjustment && (
-                                <Input 
-                                    label="Motivo do Ajuste" 
-                                    value={adjustmentDesc} 
-                                    onChange={e => setAdjustmentDesc(e.target.value)} 
-                                    placeholder="Ex: Alterações de escopo, urgência..." 
+                                <Input
+                                    label="Motivo do Ajuste"
+                                    value={adjustmentDesc}
+                                    onChange={e => setAdjustmentDesc(e.target.value)}
+                                    placeholder="Ex: Alterações de escopo, urgência..."
                                 />
                             )}
-                            
-                            <Button type="submit" className="w-full h-12 mt-2">Salvar</Button>
-                            <Button type="button" variant="ghost" className="w-full" onClick={() => setShowPaymentModal(false)}>Cancelar</Button>
+
+                            <div className="pt-4 space-y-2">
+                                <Button type="submit" className="w-full h-12 font-bold">Salvar</Button>
+                                <Button type="button" variant="ghost" className="w-full h-12" onClick={() => setShowPaymentModal(false)}>Cancelar</Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Client Modal */}
+            {showEditClient && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-lg border border-white/10 shadow-2xl relative animate-in zoom-in-95 duration-200">
+                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight flex items-center gap-2">
+                            <User size={24} className="text-brand" />
+                            Informações do Cliente
+                        </h3>
+                        <form onSubmit={handleSaveClient} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Input
+                                    label="Nome do Contato *"
+                                    value={clientForm.name || ''}
+                                    onChange={e => setClientForm({ ...clientForm, name: e.target.value })}
+                                    required
+                                />
+                                <Input
+                                    label="Nome da Empresa (Opcional)"
+                                    value={clientForm.companyName || ''}
+                                    onChange={e => setClientForm({ ...clientForm, companyName: e.target.value })}
+                                />
+                            </div>
+
+                            <SensitiveInput
+                                label="CPF / CNPJ (Privado)"
+                                value={clientForm.taxId || ''}
+                                onChange={e => setClientForm({ ...clientForm, taxId: e.target.value })}
+                                placeholder="000.000.000-00"
+                            />
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Input
+                                    label="E-mail"
+                                    type="email"
+                                    value={clientForm.email || ''}
+                                    onChange={e => setClientForm({ ...clientForm, email: e.target.value })}
+                                    placeholder="email@exemplo.com"
+                                />
+                                <Input
+                                    label="Telefone"
+                                    value={clientForm.phone || ''}
+                                    onChange={e => setClientForm({ ...clientForm, phone: e.target.value })}
+                                    placeholder="(00) 00000-0000"
+                                />
+                            </div>
+
+                            <Input
+                                label="E-mail de Cobrança (Opcional)"
+                                type="email"
+                                value={clientForm.billingEmail || ''}
+                                onChange={e => setClientForm({ ...clientForm, billingEmail: e.target.value })}
+                                placeholder="financeiro@exemplo.com"
+                            />
+
+                            <div className="pt-4 space-y-2">
+                                <Button type="submit" className="w-full h-12 font-bold">Salvar Alterações</Button>
+                                <Button type="button" variant="ghost" className="w-full h-12" onClick={() => setShowEditClient(false)}>Cancelar</Button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -443,12 +542,15 @@ const ProjectDetails: React.FC = () => {
             {/* Edit Project Modal */}
             {showEditProject && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-lg border border-white/10">
-                        <h3 className="text-xl font-bold text-white mb-6">Editar Projeto</h3>
+                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-lg border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight flex items-center gap-2">
+                            <Settings size={24} className="text-brand" />
+                            Editar Projeto
+                        </h3>
                         <div className="space-y-4">
-                            <Input label="Nome" value={project.clientName} onChange={e => updateProject(project.id, { clientName: e.target.value })} />
+                            <Input label="Categoria / Nome" value={project.clientName} onChange={e => updateProject(project.id, { clientName: e.target.value })} />
                             <div className="grid grid-cols-2 gap-4">
-                                <Input label="Valor" type="number" value={project.rate} onChange={e => updateProject(project.id, { rate: parseFloat(e.target.value) })} />
+                                <Input label="Valor" type="number" value={project.rate} onChange={e => updateProject(project.id, { rate: parseFloat(e.target.value) || 0 })} />
                                 <Select label="Moeda" value={project.currency} onChange={e => updateProject(project.id, { currency: e.target.value as Currency })}>
                                     {Object.values(Currency).map(c => <option className="bg-black" key={c} value={c}>{c}</option>)}
                                 </Select>
@@ -456,7 +558,10 @@ const ProjectDetails: React.FC = () => {
                             <Select label="Status" value={project.status} onChange={e => updateProject(project.id, { status: e.target.value as ProjectStatus })}>
                                 {Object.values(ProjectStatus).map(s => <option className="bg-black" key={s} value={s}>{s}</option>)}
                             </Select>
-                            <Button className="w-full mt-4" onClick={() => setShowEditProject(false)}>Salvar</Button>
+                            <div className="pt-4 space-y-2">
+                                <Button className="w-full h-12 font-bold" onClick={() => setShowEditProject(false)}>Salvar Projeto</Button>
+                                <Button variant="ghost" className="w-full h-12" onClick={() => setShowEditProject(false)}>Fechar</Button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -465,45 +570,47 @@ const ProjectDetails: React.FC = () => {
             {/* Installment Modal */}
             {showInstallmentModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-md border border-white/10 shadow-2xl">
+                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-md border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
                         <h3 className="text-xl font-bold text-white mb-6">Parcelar Pagamento</h3>
                         <form onSubmit={handleGenerateInstallments} className="space-y-4">
-                            <div className="p-4 bg-white/5 rounded-xl mb-4">
+                            <div className="p-4 bg-white/5 rounded-xl mb-4 border border-white/5">
                                 <p className="text-sm text-ink-gray">Valor restante a parcelar:</p>
                                 <p className="text-2xl font-bold text-white"><CurrencyDisplay amount={totals.remaining} currency={project.currency} /></p>
                             </div>
-                            <Input 
-                                label="Número de Parcelas" 
-                                type="number" 
-                                min="2" 
-                                max="24" 
-                                value={installmentCount} 
-                                onChange={e => setInstallmentCount(parseInt(e.target.value) || 2)} 
-                                required 
+                            <Input
+                                label="Número de Parcelas"
+                                type="number"
+                                min="2"
+                                max="24"
+                                value={installmentCount}
+                                onChange={e => setInstallmentCount(parseInt(e.target.value) || 2)}
+                                required
                             />
-                            <Input 
-                                label="Data da Primeira Parcela" 
-                                type="date" 
-                                value={installmentDate} 
-                                onChange={e => setInstallmentDate(e.target.value)} 
-                                required 
+                            <Input
+                                label="Data da Primeira Parcela"
+                                type="date"
+                                value={installmentDate}
+                                onChange={e => setInstallmentDate(e.target.value)}
+                                required
                             />
-                            <label className="flex items-center gap-3 p-4 bg-white/5 rounded-xl cursor-pointer">
-                                <input 
-                                    type="checkbox" 
-                                    checked={payFirstNow} 
-                                    onChange={e => setPayFirstNow(e.target.checked)} 
-                                    className="w-5 h-5 rounded bg-white/10 border-white/20"
+                            <label className="flex items-center gap-3 p-4 bg-white/5 rounded-xl cursor-pointer border border-white/5 hover:bg-white/10 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={payFirstNow}
+                                    onChange={e => setPayFirstNow(e.target.checked)}
+                                    className="w-5 h-5 rounded bg-white/10 border-white/20 accent-brand"
                                 />
-                                <span className="text-sm text-white">Marcar primeira parcela como paga</span>
+                                <span className="text-sm text-white font-medium">Marcar primeira parcela como paga</span>
                             </label>
-                            <div className="p-4 bg-brand/10 rounded-xl">
-                                <p className="text-sm text-brand">
+                            <div className="p-4 bg-brand/10 rounded-xl border border-brand/20">
+                                <p className="text-sm text-brand font-bold">
                                     {installmentCount}x de <CurrencyDisplay amount={totals.remaining / installmentCount} currency={project.currency} />
                                 </p>
                             </div>
-                            <Button type="submit" className="w-full h-12 mt-2">Gerar Parcelas</Button>
-                            <Button type="button" variant="ghost" className="w-full" onClick={() => setShowInstallmentModal(false)}>Cancelar</Button>
+                            <div className="pt-4 space-y-2">
+                                <Button type="submit" className="w-full h-12 font-bold">Gerar Parcelas</Button>
+                                <Button type="button" variant="ghost" className="w-full h-12" onClick={() => setShowInstallmentModal(false)}>Cancelar</Button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -512,42 +619,42 @@ const ProjectDetails: React.FC = () => {
             {/* Receipt Modal */}
             {showReceiptModal && selectedReceiptPayment && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-md border border-white/10 shadow-2xl">
+                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-md border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
                         <h3 className="text-xl font-bold text-white mb-6">Recibo de Pagamento</h3>
                         <div className="space-y-4">
-                            <div className="p-4 bg-white/5 rounded-xl space-y-3">
-                                <div className="flex justify-between">
-                                    <span className="text-ink-gray">Cliente</span>
-                                    <span className="text-white font-medium">{project.clientName}</span>
+                            <div className="p-4 bg-white/5 rounded-xl space-y-3 border border-white/5">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Cliente</span>
+                                    <span className="text-white font-bold">{project.clientName}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-ink-gray">Projeto</span>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Projeto</span>
                                     <span className="text-white font-medium">{project.category}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-ink-gray">Data</span>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Data</span>
                                     <span className="text-white font-medium">{new Date(selectedReceiptPayment.date).toLocaleDateString()}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-ink-gray">Descrição</span>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Descrição</span>
                                     <span className="text-white font-medium">{selectedReceiptPayment.note || 'Pagamento'}</span>
                                 </div>
                                 {selectedReceiptPayment.invoiceNumber && (
-                                    <div className="flex justify-between">
-                                        <span className="text-ink-gray">Nota Fiscal</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Nota Fiscal</span>
                                         <span className="text-white font-medium">{selectedReceiptPayment.invoiceNumber}</span>
                                     </div>
                                 )}
-                                <div className="border-t border-white/10 pt-3 flex justify-between">
-                                    <span className="text-ink-gray font-bold">Valor</span>
-                                    <span className="text-brand text-xl font-bold"><CurrencyDisplay amount={selectedReceiptPayment.amount} currency={project.currency} /></span>
+                                <div className="border-t border-white/10 pt-3 flex justify-between items-center">
+                                    <span className="text-sm text-ink-gray font-bold uppercase">Valor Pago</span>
+                                    <span className="text-brand text-2xl font-black font-mono"><CurrencyDisplay amount={selectedReceiptPayment.amount} currency={project.currency} /></span>
                                 </div>
                             </div>
-                            <div className="flex justify-between text-xs text-ink-dim">
+                            <div className="flex flex-col gap-1 text-[10px] text-ink-dim uppercase font-bold tracking-tighter">
                                 <span>Emitido por: {userProfile.name}</span>
                                 {userProfile.pixKey && <span>PIX: {userProfile.pixKey}</span>}
                             </div>
-                            <Button className="w-full" onClick={() => setShowReceiptModal(false)}>Fechar</Button>
+                            <Button className="w-full h-12 font-bold" onClick={() => setShowReceiptModal(false)}>Fechar Recibo</Button>
                         </div>
                     </div>
                 </div>
@@ -568,7 +675,7 @@ const ProjectDetails: React.FC = () => {
                 taxId={userProfile.taxId}
                 clientEmail={client?.billingEmail}
             />
-        </div>
+        </div >
     );
 };
 

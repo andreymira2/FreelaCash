@@ -2,9 +2,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { Button, Input, Select, Card, Avatar } from '../components/ui';
-import { Currency, ProjectType, ProjectStatus, ProjectContractType, PaymentStatus } from '../types';
-import { ArrowLeft, AlertCircle, CheckCircle2, Zap, Calendar, Clock, Briefcase, DollarSign, Plus, User, ChevronRight, Check, Sparkles } from 'lucide-react';
+import { Button, Input, Select, Card, Avatar, SensitiveInput } from '../components/ui';
+import { Currency, ProjectType, ProjectStatus, ProjectContractType, PaymentStatus, Client } from '../types';
+import { ArrowLeft, AlertCircle, CheckCircle2, Zap, Calendar, Clock, Briefcase, DollarSign, Plus, User, ChevronRight, Check, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { parseLocalDateToISO, parseNumber, toInputDate } from '../utils/format';
 
 const ProjectForm: React.FC = () => {
@@ -36,8 +36,16 @@ const ProjectForm: React.FC = () => {
         isOngoing: true,
         estimatedHours: '',
         firstPaymentDate: '',
-        firstPaymentAmount: ''
+        firstPaymentAmount: '',
+        // Client details
+        clientTaxId: '',
+        clientCompanyName: '',
+        clientEmail: '',
+        clientPhone: '',
+        clientBillingEmail: ''
     });
+
+    const [showClientDetails, setShowClientDetails] = useState(false);
 
     const handleSelectClient = (clientId: string, clientName: string) => {
         setSelectedClientId(clientId);
@@ -93,9 +101,24 @@ const ProjectForm: React.FC = () => {
         const initialStatus = formData.contractType === ProjectContractType.ONE_OFF ? ProjectStatus.ACTIVE : ProjectStatus.ONGOING;
 
         // Resolve or create Client entity
-        const client = selectedClientId 
-            ? clients.find(c => c.id === selectedClientId) || getOrCreateClientByName(formData.clientName)
-            : getOrCreateClientByName(formData.clientName);
+        let client: Client;
+        if (selectedClientId) {
+            client = clients.find(c => c.id === selectedClientId) || getOrCreateClientByName(formData.clientName);
+        } else {
+            // Create new client with full details if provided
+            const newClient: Client = {
+                id: `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                name: formData.clientName.trim(),
+                createdAt: Date.now(),
+                taxId: formData.clientTaxId,
+                companyName: formData.clientCompanyName,
+                email: formData.clientEmail,
+                phone: formData.clientPhone,
+                billingEmail: formData.clientBillingEmail
+            };
+            addClient(newClient);
+            client = newClient;
+        }
 
         const payments = [];
         if (formData.firstPaymentDate) {
@@ -261,6 +284,60 @@ const ProjectForm: React.FC = () => {
                                     />
                                 )}
                             </div>
+
+                            {/* Client Details Section (Only for new clients) */}
+                            {!selectedClientId && formData.clientName.trim() && (
+                                <div className="space-y-4 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowClientDetails(!showClientDetails)}
+                                        className="flex items-center gap-2 text-primary-400 text-sm font-bold hover:text-primary-300 transition-colors"
+                                    >
+                                        {showClientDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                        {showClientDetails ? "Ocultar detalhes do cliente" : "Adicionar detalhes do cliente (CPF/CNPJ, E-mail...)"}
+                                    </button>
+
+                                    {showClientDetails && (
+                                        <div className="bg-white/5 p-5 rounded-2xl border border-white/5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <Input
+                                                    label="Nome da Empresa (Opcional)"
+                                                    value={formData.clientCompanyName}
+                                                    onChange={e => setFormData({ ...formData, clientCompanyName: e.target.value })}
+                                                />
+                                                <SensitiveInput
+                                                    label="CPF / CNPJ (Privado)"
+                                                    value={formData.clientTaxId}
+                                                    onChange={e => setFormData({ ...formData, clientTaxId: e.target.value })}
+                                                    placeholder="000.000.000-00"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <Input
+                                                    label="E-mail"
+                                                    type="email"
+                                                    value={formData.clientEmail}
+                                                    onChange={e => setFormData({ ...formData, clientEmail: e.target.value })}
+                                                    placeholder="email@exemplo.com"
+                                                />
+                                                <Input
+                                                    label="Telefone"
+                                                    value={formData.clientPhone}
+                                                    onChange={e => setFormData({ ...formData, clientPhone: e.target.value })}
+                                                    placeholder="(00) 00000-0000"
+                                                />
+                                            </div>
+                                            <Input
+                                                label="E-mail de Cobrança (Opcional)"
+                                                type="email"
+                                                value={formData.clientBillingEmail}
+                                                onChange={e => setFormData({ ...formData, clientBillingEmail: e.target.value })}
+                                                placeholder="financeiro@exemplo.com"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <Input

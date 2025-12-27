@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Card, Input, Button, Select, Avatar, CurrencyDisplay, PageHeader } from '../components/ui';
-import { Currency, CURRENCY_SYMBOLS } from '../types';
-import { Save, User, Download, Upload, Database, Globe, BadgeCheck, CreditCard, HardDrive, BookOpen, DollarSign, CheckCircle2, LayoutDashboard, FolderKanban, Wallet, Printer, Monitor, WifiOff, Camera, LogOut } from 'lucide-react';
+import { Currency, CURRENCY_SYMBOLS, UserProfile } from '../types';
+import { Save, User, Download, Upload, Database, Globe, BadgeCheck, CreditCard, HardDrive, BookOpen, DollarSign, CheckCircle2, LayoutDashboard, FolderKanban, Wallet, Printer, Monitor, WifiOff, Camera, LogOut, PlusCircle, XCircle } from 'lucide-react';
+import { SensitiveInput } from '../components/ui/SensitiveInput';
+import { validateCPF, validatePIX } from '../utils/validation';
 
 const DarkCard = ({ children, className = '' }: any) => (
     <div className={`bg-base-card text-white p-6 rounded-2xl border border-white/5 ${className}`}>
@@ -33,8 +35,10 @@ const Settings: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'PROFILE' | 'APP' | 'DATA' | 'HELP'>('PROFILE');
 
     const [settingsForm, setSettingsForm] = useState(settings);
-    const [profileForm, setProfileForm] = useState(userProfile);
+    const [profileForm, setProfileForm] = useState<UserProfile>(userProfile);
     const [saved, setSaved] = useState(false);
+    const [showCPFToggle, setShowCPFToggle] = useState(!!userProfile.taxId);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -45,6 +49,22 @@ const Settings: React.FC = () => {
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validation
+        const newErrors: Record<string, string> = {};
+        if (profileForm.taxId && !validateCPF(profileForm.taxId)) {
+            newErrors.taxId = 'CPF inválido';
+        }
+        if (profileForm.pixKey && !validatePIX(profileForm.pixKey)) {
+            newErrors.pixKey = 'Chave PIX inválida';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            setTimeout(() => setErrors({}), 3000);
+            return;
+        }
+
         updateSettings(settingsForm);
         updateUserProfile(profileForm);
         setSaved(true);
@@ -52,6 +72,9 @@ const Settings: React.FC = () => {
     };
 
     const handleExport = () => {
+        const confirmed = window.confirm("Atenção: O backup contém dados sensíveis como seu CPF e Chave PIX. Mantenha este arquivo em um local seguro. Deseja continuar?");
+        if (!confirmed) return;
+
         const dataStr = exportData();
         const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
         const linkElement = document.createElement('a');
@@ -61,15 +84,33 @@ const Settings: React.FC = () => {
     };
 
     const handleImportClick = () => fileInputRef.current?.click();
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        // Validation: Extension
+        if (!file.name.endsWith('.json')) {
+            alert("Por favor, selecione apenas arquivos .json");
+            return;
+        }
+
+        // Validation: Size (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert("O arquivo de backup é muito grande (máximo 5MB).");
+            return;
+        }
+
         const reader = new FileReader();
-        reader.onload = (event) => {
-            if (event.target?.result && importData(event.target.result as string)) {
-                alert("Dados importados com sucesso! Atualizando...");
-                window.location.reload();
-            } else alert("Formato de arquivo inválido.");
+        reader.onload = async (event) => {
+            if (event.target?.result) {
+                const success = await importData(event.target.result as string);
+                if (success) {
+                    alert("Dados importados com sucesso! Atualizando...");
+                    window.location.reload();
+                } else {
+                    alert("Formato de arquivo inválido ou corrompido.");
+                }
+            } else alert("Falha ao ler o arquivo.");
         };
         reader.readAsText(file);
     };
@@ -208,8 +249,43 @@ const Settings: React.FC = () => {
                             <DarkCard>
                                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><CreditCard size={20} className="text-ink-gray" /> Dados de Cobrança</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <DarkInput label="CPF / CNPJ" placeholder="000.000.000-00" value={profileForm.taxId || ''} onChange={handleProfileFieldChange('taxId')} />
-                                    <DarkInput label="Chave PIX / Conta" placeholder="Chave" value={profileForm.pixKey || ''} onChange={handleProfileFieldChange('pixKey')} />
+                                    {showCPFToggle || profileForm.taxId ? (
+                                        <div className="relative">
+                                            <SensitiveInput
+                                                label="CPF / CNPJ"
+                                                placeholder="000.000.000-00"
+                                                value={profileForm.taxId || ''}
+                                                onChange={handleProfileFieldChange('taxId')}
+                                            />
+                                            {errors.taxId && <p className="text-[10px] text-semantic-red font-bold absolute -bottom-1 left-1">{errors.taxId}</p>}
+                                            {!profileForm.taxId && (
+                                                <button
+                                                    onClick={() => setShowCPFToggle(false)}
+                                                    className="absolute top-0 right-0 text-ink-dim hover:text-white p-1"
+                                                >
+                                                    <XCircle size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-1.5 mb-4 justify-end">
+                                            <button
+                                                onClick={() => setShowCPFToggle(true)}
+                                                className="flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-white/20 bg-white/5 text-ink-gray hover:text-white hover:border-white/40 transition-all text-sm font-bold"
+                                            >
+                                                <PlusCircle size={18} /> Adicionar CPF (opcional)
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="relative">
+                                        <SensitiveInput
+                                            label="Chave PIX / Conta"
+                                            placeholder="Chave"
+                                            value={profileForm.pixKey || ''}
+                                            onChange={handleProfileFieldChange('pixKey')}
+                                        />
+                                        {errors.pixKey && <p className="text-[10px] text-semantic-red font-bold absolute -bottom-1 left-1">{errors.pixKey}</p>}
+                                    </div>
                                 </div>
                             </DarkCard>
                         </div>
@@ -229,7 +305,11 @@ const Settings: React.FC = () => {
                                     </div>
                                     <div className="w-full bg-white/5 rounded-xl p-3 border border-white/5">
                                         <p className="text-xs text-ink-dim uppercase font-bold">ID / Tax</p>
-                                        <p className="text-sm text-ink-gray">{profileForm.taxId || '---'}</p>
+                                        <p className="text-sm text-ink-gray font-mono">
+                                            {profileForm.taxId
+                                                ? `${profileForm.taxId.substring(0, 3)}.***.***-${profileForm.taxId.slice(-2)}`
+                                                : '---'}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -263,14 +343,14 @@ const Settings: React.FC = () => {
                             <DarkCard>
                                 <h3 className="text-lg font-bold text-white mb-2">Reserva para Impostos</h3>
                                 <p className="text-sm text-ink-gray mb-6">Percentual da receita a separar para impostos (ex: MEI = 5%, Simples = 6-15%).</p>
-                                <DarkInput 
-                                    type="number" 
-                                    min="0" 
-                                    max="100" 
+                                <DarkInput
+                                    type="number"
+                                    min="0"
+                                    max="100"
                                     step="0.5"
-                                    value={settingsForm.taxReservePercent || 0} 
-                                    onChange={(e: any) => setSettingsForm({ ...settingsForm, taxReservePercent: parseFloat(e.target.value) || 0 })} 
-                                    label="Percentual (%)" 
+                                    value={settingsForm.taxReservePercent || 0}
+                                    onChange={(e: any) => setSettingsForm({ ...settingsForm, taxReservePercent: parseFloat(e.target.value) || 0 })}
+                                    label="Percentual (%)"
                                     placeholder="0"
                                 />
                             </DarkCard>
@@ -339,12 +419,12 @@ const Settings: React.FC = () => {
 
                         <div className="pt-8 border-t border-white/10">
                             <h3 className="text-sm font-bold text-ink-dim uppercase tracking-wider mb-4">Conta</h3>
-                            <Button 
-                                variant="outline" 
-                                onClick={async () => { 
-                                    await signOut(); 
-                                    navigate('/welcome'); 
-                                }} 
+                            <Button
+                                variant="outline"
+                                onClick={async () => {
+                                    await signOut();
+                                    navigate('/welcome');
+                                }}
                                 className="w-full border-white/10 text-white hover:bg-white/5"
                             >
                                 <LogOut size={16} className="mr-2" /> Sair da Conta
