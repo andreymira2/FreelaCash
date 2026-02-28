@@ -224,5 +224,9 @@ export function useContract(contractId?: string) {
 
 export function useContractsList() {
   const engine = useFinancialEngine();
-  return useMemo(() => engine.getContractsListModel(), [engine]);
+  const { loading } = useData();
+  return useMemo(() => ({
+    models: engine.getContractsListModel(),
+    loading
+  }), [engine, loading]);
 }

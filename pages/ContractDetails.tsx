@@ -201,7 +201,9 @@ const ContractDetails: React.FC = () => {
                                 <div key={item.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group">
                                     <div className="flex-1">
                                         <p className="font-bold text-white">{item.description}</p>
-                                        <p className="text-[10px] text-ink-dim uppercase font-bold">{item.type}</p>
+                                        <p className="text-[10px] text-ink-dim uppercase font-bold">
+                                            {item.type === 'FIXED' ? 'Fixo' : item.type === 'HOURLY' ? 'Por Hora' : 'Retenção'}
+                                        </p>
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <span className="font-mono font-black text-white">{formatCurrency(item.amount, (formData.currency as Currency) || settings.mainCurrency)}</span>
@@ -238,7 +240,7 @@ const ContractDetails: React.FC = () => {
                                     onClick={handleAddItem}
                                     className="p-2 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center gap-2 transition-all text-xs font-black uppercase tracking-widest"
                                 >
-                                    <Plus size={16} /> Add
+                                    <Plus size={16} /> Adicionar
                                 </button>
                             </div>
                         </div>

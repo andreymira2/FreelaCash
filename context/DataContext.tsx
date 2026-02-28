@@ -47,6 +47,7 @@ interface DataContextType {
   saveExpenseAsPreset: (expenseId: string) => void;
   deleteExpense: (id: string) => void;
   bulkDeleteExpenses: (ids: string[]) => void;
+  convertCurrency: (amount: number, from: Currency, to: Currency) => number;
 
   getDateRangeFilter: () => { start: Date; end: Date };
   importData: (jsonString: string) => boolean;
@@ -591,6 +592,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [user, data.expenses, showError, loadUserData, runMutation]);
 
+  const convertCurrencyTo = useCallback((amount: number, from: Currency, to: Currency) => {
+    const rates = data.settings.exchangeRates;
+    if (from === to) return amount;
+
+    // Convert to BRL first as base if needed, but here BRL is 1
+    const amountInBase = amount / (rates[from] || 1);
+    return amountInBase * (rates[to] || 1);
+  }, [data.settings.exchangeRates]);
+
   const bulkMarkMultipleExpensesAsPaid = useCallback(async (ids: string[], monthsStr: string[]) => {
     if (!user) return;
 
@@ -823,7 +833,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addExpense, updateExpense, deleteExpense, bulkDeleteExpenses, toggleExpensePayment, bulkMarkExpenseAsPaid, bulkMarkMultipleExpensesAsPaid, saveExpenseAsPreset,
       getDateRangeFilter,
       importData, exportData, loadDemoData,
-      addContract, updateContract, deleteContract
+      addContract, updateContract, deleteContract,
+      convertCurrency: convertCurrencyTo
     }}>
       {children}
     </DataContext.Provider>
