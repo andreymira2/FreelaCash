@@ -7,10 +7,11 @@ interface Toast {
   id: string;
   message: string;
   type: ToastType;
+  undoAction?: () => void;
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType) => void;
+  showToast: (message: string, type?: ToastType, undoAction?: () => void) => void;
   showSuccess: (message: string) => void;
   showError: (message: string) => void;
   showWarning: (message: string) => void;
@@ -25,10 +26,11 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  const showToast = useCallback((message: string, type: ToastType = 'success') => {
+  const showToast = useCallback((message: string, type: ToastType = 'success', undoAction?: () => void) => {
     const id = `${Date.now()}-${Math.random()}`;
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => removeToast(id), 4000);
+    setToasts(prev => [...prev, { id, message, type, undoAction }]);
+    // Longer timeout if there's an undo action
+    setTimeout(() => removeToast(id), undoAction ? 6000 : 4000);
   }, [removeToast]);
 
   const showSuccess = useCallback((message: string) => showToast(message, 'success'), [showToast]);
@@ -61,7 +63,20 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             className={`${getBgColor(toast.type)} border rounded-xl p-4 shadow-lg flex items-start gap-3 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto`}
           >
             {getIcon(toast.type)}
-            <p className="flex-1 text-sm text-white font-medium">{toast.message}</p>
+            <div className="flex-1 flex flex-col gap-1">
+              <p className="text-sm text-white font-medium">{toast.message}</p>
+              {toast.undoAction && (
+                <button
+                  onClick={() => {
+                    toast.undoAction?.();
+                    removeToast(toast.id);
+                  }}
+                  className="self-start flex items-center gap-1.5 text-xs font-bold text-brand hover:text-white transition-colors mt-1"
+                >
+                  Desfazer
+                </button>
+              )}
+            </div>
             <button
               onClick={() => removeToast(toast.id)}
               className="p-1 hover:bg-white/10 rounded-full transition-colors"

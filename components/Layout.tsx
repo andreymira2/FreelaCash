@@ -1,17 +1,28 @@
 
 import React from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, Plus, FileText, Settings, Wallet, Calendar } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Users, Plus, FileText, Settings, Wallet, Calendar } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { useFinancialEngine } from '../hooks/useFinancialEngine';
 import { Avatar } from './ui';
 
 const Layout: React.FC = () => {
   const location = useLocation();
   const { userProfile } = useData();
 
+  const engine = useFinancialEngine();
+  const signals = engine.getDashboardSignals();
+  const hasContracts = useData().contracts.length > 0;
+
+  // Progressive Disclosure: Show Contracts if already used, 
+  // or if signals suggest it (multi-project or high recurring)
+  const showContracts = hasContracts || signals.hasMultiProjectClient || signals.hasRecurringExpenses;
+
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Início' },
     { path: '/projects', icon: FolderKanban, label: 'Projetos' },
+    { path: '/clients', icon: Users, label: 'Clientes' },
+    ...(showContracts ? [{ path: '/contracts', icon: FileText, label: 'Contratos' }] : []),
     { path: '/expenses', icon: Wallet, label: 'Despesas' },
     { path: '/calendar', icon: Calendar, label: 'Calendário' },
     { path: '/add', icon: Plus, label: 'Novo', special: true },

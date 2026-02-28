@@ -1,7 +1,8 @@
 import { supabase } from './supabase';
-import type { 
-  Client, Project, Expense, WorkLog, Payment, 
-  ProjectAdjustment, UserProfile, AppSettings, Currency 
+import type {
+  Client, Project, Expense, WorkLog, Payment,
+  ProjectAdjustment, UserProfile, AppSettings, Currency,
+  Contract, ContractItem
 } from '../types';
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -23,9 +24,9 @@ export const database = {
       .select('*')
       .eq('id', userId)
       .single();
-    
+
     if (error || !data) return null;
-    
+
     return {
       name: data.name,
       title: data.title,
@@ -49,7 +50,7 @@ export const database = {
         avatar: profile.avatar,
         updated_at: new Date().toISOString()
       });
-    
+
     return !error;
   },
 
@@ -59,14 +60,15 @@ export const database = {
       .select('*')
       .eq('id', userId)
       .single();
-    
+
     if (error || !data) return DEFAULT_SETTINGS;
-    
+
     return {
       monthlyGoal: data.monthly_goal || DEFAULT_SETTINGS.monthlyGoal,
       mainCurrency: (data.main_currency || 'BRL') as Currency,
       exchangeRates: data.exchange_rates || DEFAULT_SETTINGS.exchangeRates,
-      taxReservePercent: data.tax_reserve_percent || 0
+      taxReservePercent: data.tax_reserve_percent || 0,
+      schemaVersion: data.schema_version || 1 // New: Handle schema version gracefully
     };
   },
 
@@ -79,9 +81,10 @@ export const database = {
         main_currency: settings.mainCurrency,
         exchange_rates: settings.exchangeRates,
         tax_reserve_percent: settings.taxReservePercent,
+        schema_version: settings.schemaVersion, // New: Save schema version
         updated_at: new Date().toISOString()
       });
-    
+
     return !error;
   },
 
@@ -91,9 +94,9 @@ export const database = {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
-    
+
     if (error || !data) return [];
-    
+
     return data.map(c => ({
       id: c.id,
       name: c.name,
@@ -110,6 +113,7 @@ export const database = {
       lastActivityDate: c.last_activity_date,
       tags: c.tags || [],
       isArchived: c.is_archived,
+      contractIds: c.contract_ids || [],
       createdAt: new Date(c.created_at).getTime()
     }));
   },
@@ -137,7 +141,7 @@ export const database = {
       })
       .select('id')
       .single();
-    
+
     return error ? null : data.id;
   },
 
@@ -163,7 +167,7 @@ export const database = {
       })
       .eq('id', clientId)
       .eq('user_id', userId);
-    
+
     return !error;
   },
 
@@ -173,7 +177,7 @@ export const database = {
       .delete()
       .eq('id', clientId)
       .eq('user_id', userId);
-    
+
     return !error;
   },
 
@@ -183,11 +187,11 @@ export const database = {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
-    
+
     if (error || !projects) return [];
 
     const projectIds = projects.map(p => p.id);
-    
+
     const [logsResult, paymentsResult, adjustmentsResult] = await Promise.all([
       supabase.from('work_logs').select('*').in('project_id', projectIds),
       supabase.from('payments').select('*').in('project_id', projectIds),
@@ -260,6 +264,7 @@ export const database = {
       payments: paymentsMap.get(p.id) || [],
       adjustments: adjustmentsMap.get(p.id) || [],
       events: [],
+      contractId: p.contract_id,
       createdAt: new Date(p.created_at).getTime()
     }));
   },
@@ -270,6 +275,7 @@ export const database = {
       .insert({
         user_id: userId,
         client_id: project.clientId,
+        contract_id: project.contractId,
         client_name: project.clientName,
         type: project.type,
         contract_type: project.contractType,
@@ -291,7 +297,7 @@ export const database = {
       })
       .select('id')
       .single();
-    
+
     return error ? null : data.id;
   },
 
@@ -318,11 +324,12 @@ export const database = {
         notes: updates.notes,
         checklist: updates.checklist,
         linked_expense_ids: updates.linkedExpenseIds,
+        contract_id: updates.contractId,
         updated_at: new Date().toISOString()
       })
       .eq('id', projectId)
       .eq('user_id', userId);
-    
+
     return !error;
   },
 
@@ -332,7 +339,7 @@ export const database = {
       .delete()
       .eq('id', projectId)
       .eq('user_id', userId);
-    
+
     return !error;
   },
 
@@ -349,7 +356,7 @@ export const database = {
       })
       .select('id')
       .single();
-    
+
     return error ? null : data.id;
   },
 
@@ -359,7 +366,7 @@ export const database = {
       .delete()
       .eq('id', logId)
       .eq('user_id', userId);
-    
+
     return !error;
   },
 
@@ -377,7 +384,7 @@ export const database = {
       })
       .select('id')
       .single();
-    
+
     return error ? null : data.id;
   },
 
@@ -393,7 +400,7 @@ export const database = {
       })
       .eq('id', paymentId)
       .eq('user_id', userId);
-    
+
     return !error;
   },
 
@@ -403,7 +410,7 @@ export const database = {
       .delete()
       .eq('id', paymentId)
       .eq('user_id', userId);
-    
+
     return !error;
   },
 
@@ -420,7 +427,7 @@ export const database = {
       })
       .select('id')
       .single();
-    
+
     return error ? null : data.id;
   },
 
@@ -430,9 +437,9 @@ export const database = {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
-    
+
     if (error || !data) return [];
-    
+
     return data.map(e => ({
       id: e.id,
       title: e.title,
@@ -478,7 +485,7 @@ export const database = {
       })
       .select('id')
       .single();
-    
+
     return error ? null : data.id;
   },
 
@@ -509,7 +516,7 @@ export const database = {
       .update(updateData)
       .eq('id', expenseId)
       .eq('user_id', userId);
-    
+
     return !error;
   },
 
@@ -519,7 +526,87 @@ export const database = {
       .delete()
       .eq('id', expenseId)
       .eq('user_id', userId);
-    
+
+    return !error;
+  },
+
+  async getContracts(userId: string): Promise<Contract[]> {
+    const { data, error } = await supabase
+      .from('contracts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error || !data) return [];
+
+    return data.map(c => ({
+      id: c.id,
+      userId: c.user_id,
+      clientId: c.client_id,
+      title: c.title,
+      retainerAmount: c.retainer_amount,
+      currency: c.currency as Currency,
+      startDate: c.start_date,
+      endDate: c.end_date,
+      isActive: c.is_active,
+      items: c.items || [],
+      projectIds: c.project_ids || [],
+      createdAt: new Date(c.created_at).getTime(),
+      updatedAt: new Date(c.updated_at).getTime()
+    }));
+  },
+
+  async addContract(userId: string, contract: Contract): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('contracts')
+      .insert({
+        user_id: userId,
+        client_id: contract.clientId,
+        title: contract.title,
+        retainer_amount: contract.retainerAmount,
+        currency: contract.currency,
+        start_date: contract.startDate,
+        end_date: contract.endDate,
+        is_active: contract.isActive,
+        items: contract.items,
+        project_ids: contract.projectIds
+      })
+      .select('id')
+      .single();
+
+    return error ? null : data.id;
+  },
+
+  async updateContract(userId: string, contractId: string, updates: Partial<Contract>): Promise<boolean> {
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.retainerAmount !== undefined) updateData.retainer_amount = updates.retainerAmount;
+    if (updates.currency !== undefined) updateData.currency = updates.currency;
+    if (updates.startDate !== undefined) updateData.start_date = updates.startDate;
+    if (updates.endDate !== undefined) updateData.end_date = updates.endDate;
+    if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
+    if (updates.items !== undefined) updateData.items = updates.items;
+    if (updates.projectIds !== undefined) updateData.project_ids = updates.projectIds;
+
+    const { error } = await supabase
+      .from('contracts')
+      .update(updateData)
+      .eq('id', contractId)
+      .eq('user_id', userId);
+
+    return !error;
+  },
+
+  async deleteContract(userId: string, contractId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('contracts')
+      .delete()
+      .eq('id', contractId)
+      .eq('user_id', userId);
+
     return !error;
   }
 };

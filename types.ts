@@ -46,20 +46,23 @@ export interface Client {
   website?: string;
   notes?: string;
   createdAt: number;
-  
+
   // Billing preferences
   preferredBillingChannel?: 'whatsapp' | 'email' | 'other';
   billingEmail?: string; // Separate from contact email
-  
+
   // Relationship tracking
   firstProjectDate?: string; // ISO string - when first project started
   lastActivityDate?: string; // ISO string - last payment or project update
-  
+
   // Tags for filtering/grouping
   tags?: string[];
-  
+
   // Archived flag (soft delete for clients with history)
   isArchived?: boolean;
+
+  // Contracts
+  contractIds?: string[];
 }
 
 export interface WorkLog {
@@ -75,7 +78,7 @@ export interface Payment {
   date: string; // ISO string
   amount: number;
   note?: string;
-  status?: PaymentStatus; 
+  status?: PaymentStatus;
   invoiceNumber?: string; // New: Nota Fiscal number tracking
 }
 
@@ -108,27 +111,27 @@ export interface Project {
   type: ProjectType;
   contractType?: ProjectContractType;
   category: ProjectCategory;
-  rate: number; 
+  rate: number;
   currency: Currency;
   status: ProjectStatus;
   platformFee?: number; // Percentage 0-100
   invoiceUrl?: string;
   tags?: string[];
-  
+
   // Date fields
   startDate: string; // ISO string
   dueDate?: string; // ISO string for one-off
   contractEndDate?: string; // For fixed recurring
   renewalDate?: string; // For retainers
-  
+
   // Estimations
   estimatedHours?: number;
 
   // Financials
   paymentDate?: string; // Legacy
-  payments?: Payment[]; 
+  payments?: Payment[];
   adjustments?: ProjectAdjustment[]; // New: Extra income/Scope creep
-  
+
   // Enhanced modules
   logs: WorkLog[];
   events?: ProjectEvent[];
@@ -136,7 +139,34 @@ export interface Project {
   linkedExpenseIds?: string[];
 
   notes?: string;
+  isArchived?: boolean;
   createdAt: number;
+
+  // Contract link
+  contractId?: string; // Link to Contract entity
+}
+
+export interface ContractItem {
+  id: string;
+  description: string;
+  amount: number;
+  type: 'FIXED' | 'HOURLY' | 'RETAINER';
+}
+
+export interface Contract {
+  id: string;
+  userId: string;
+  clientId: string;
+  title: string;
+  retainerAmount: number;
+  currency: Currency;
+  startDate: string; // ISO string
+  endDate?: string; // ISO string
+  isActive: boolean;
+  items: ContractItem[];
+  projectIds: string[];
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface UserProfile {
@@ -150,9 +180,9 @@ export interface UserProfile {
 
 // New: Monthly Payment Tracking for recurring expenses
 export interface ExpensePaymentHistory {
-    monthStr: string; // Format "YYYY-MM"
-    status: 'PAID' | 'PENDING';
-    paidDate?: string;
+  monthStr: string; // Format "YYYY-MM"
+  status: 'PAID' | 'PENDING';
+  paidDate?: string;
 }
 
 export interface Expense {
@@ -167,18 +197,21 @@ export interface Expense {
   isRecurring?: boolean;
   recurringFrequency?: 'MONTHLY' | 'YEARLY';
   notes?: string;
-  
+
   status?: 'PAID' | 'PENDING'; // Legacy / For One-Off
   paymentHistory?: ExpensePaymentHistory[]; // New: For Recurring Monthly Tracking
 
   dueDay?: number; // 1-31 for recurring due date
-  
+
   // New Trial Logic
   isTrial?: boolean;
   trialEndDate?: string; // ISO String date when trial ends
-  
+
   // Logo for brand recognition
   logoUrl?: string; // Logo.dev URL for the service
+
+  // Project linking
+  projectId?: string; // New: link to Project for direct costs
 }
 
 export interface AppSettings {
@@ -186,6 +219,7 @@ export interface AppSettings {
   mainCurrency: Currency;
   exchangeRates: Record<Currency, number>;
   taxReservePercent?: number;
+  schemaVersion?: number; // New: Version for safe local data migration
 }
 
 export interface AppData {
@@ -193,7 +227,8 @@ export interface AppData {
   clients: Client[]; // New collection
   projects: Project[];
   expenses: Expense[];
-  settings: AppSettings;
+  contracts: Contract[];
+  settings: AppSettings & { customPresets?: ServicePreset[] };
 }
 
 export const CURRENCY_SYMBOLS: Record<Currency, string> = {
@@ -245,21 +280,21 @@ export const SERVICE_PRESETS: ServicePreset[] = [
   { id: 'aluguel', name: 'Aluguel', domain: '', defaultCategory: 'Moradia', defaultTags: ['Moradia'], isRecurring: true, iconName: 'Home' },
   { id: 'condominio', name: 'Condomínio', domain: '', defaultCategory: 'Moradia', defaultTags: ['Moradia'], isRecurring: true, iconName: 'Building2' },
   { id: 'iptu', name: 'IPTU', domain: '', defaultCategory: 'Moradia', defaultTags: ['Imposto'], isRecurring: true, iconName: 'FileText' },
-  
+
   // CONTAS FIXAS
   { id: 'luz', name: 'Conta de Luz', domain: '', defaultCategory: 'Contas Fixas', defaultTags: ['Energia'], isRecurring: true, iconName: 'Zap' },
   { id: 'agua', name: 'Conta de Água', domain: '', defaultCategory: 'Contas Fixas', defaultTags: ['Água'], isRecurring: true, iconName: 'Droplet' },
   { id: 'gas', name: 'Gás', domain: '', defaultCategory: 'Contas Fixas', defaultTags: ['Gás'], isRecurring: true, iconName: 'Flame' },
   { id: 'internet', name: 'Internet', domain: '', defaultCategory: 'Contas Fixas', defaultTags: ['Internet'], isRecurring: true, iconName: 'Wifi' },
   { id: 'celular', name: 'Celular', domain: '', defaultCategory: 'Contas Fixas', defaultTags: ['Telefone'], isRecurring: true, iconName: 'Smartphone' },
-  
+
   // ALIMENTAÇÃO
   { id: 'mercado', name: 'Mercado', domain: '', defaultCategory: 'Alimentação', defaultTags: ['Compras'], isRecurring: false, iconName: 'ShoppingCart' },
   { id: 'ifood', name: 'iFood', domain: 'ifood.com.br', defaultCategory: 'Alimentação', defaultTags: ['Delivery'], isRecurring: false, iconName: 'UtensilsCrossed' },
   { id: 'rappi', name: 'Rappi', domain: 'rappi.com.br', defaultCategory: 'Alimentação', defaultTags: ['Delivery'], isRecurring: false, iconName: 'UtensilsCrossed' },
   { id: 'restaurante', name: 'Restaurante', domain: '', defaultCategory: 'Alimentação', defaultTags: ['Refeição'], isRecurring: false, iconName: 'UtensilsCrossed' },
   { id: 'cafe', name: 'Café', domain: '', defaultCategory: 'Alimentação', defaultTags: ['Café'], isRecurring: false, iconName: 'Coffee' },
-  
+
   // FERRAMENTAS (trabalho)
   { id: 'adobe', name: 'Adobe CC', domain: 'adobe.com', defaultCategory: 'Ferramentas', defaultTags: ['Design'], isRecurring: true, defaultAmount: 290, defaultCurrency: Currency.BRL, iconName: 'PenTool' },
   { id: 'figma', name: 'Figma', domain: 'figma.com', defaultCategory: 'Ferramentas', defaultTags: ['Design'], isRecurring: true, defaultAmount: 15, defaultCurrency: Currency.USD, iconName: 'Figma' },
@@ -275,13 +310,13 @@ export const SERVICE_PRESETS: ServicePreset[] = [
   { id: 'godaddy', name: 'GoDaddy', domain: 'godaddy.com', defaultCategory: 'Ferramentas', defaultTags: ['Domínio'], isRecurring: true, iconName: 'Globe' },
   { id: 'zoom', name: 'Zoom', domain: 'zoom.us', defaultCategory: 'Ferramentas', defaultTags: ['Reuniões'], isRecurring: true, defaultAmount: 15.99, defaultCurrency: Currency.USD, iconName: 'Video' },
   { id: 'slack', name: 'Slack', domain: 'slack.com', defaultCategory: 'Ferramentas', defaultTags: ['Comunicação'], isRecurring: true, defaultAmount: 8.75, defaultCurrency: Currency.USD, iconName: 'MessageSquare' },
-  
+
   // TRANSPORTE
   { id: 'uber', name: 'Uber', domain: 'uber.com', defaultCategory: 'Transporte', defaultTags: ['Corrida'], isRecurring: false, iconName: 'Car' },
   { id: '99', name: '99', domain: '99app.com', defaultCategory: 'Transporte', defaultTags: ['Corrida'], isRecurring: false, iconName: 'Car' },
   { id: 'gasolina', name: 'Gasolina', domain: '', defaultCategory: 'Transporte', defaultTags: ['Combustível'], isRecurring: false, iconName: 'Fuel' },
   { id: 'estacionamento', name: 'Estacionamento', domain: '', defaultCategory: 'Transporte', defaultTags: ['Estacionamento'], isRecurring: false, iconName: 'ParkingCircle' },
-  
+
   // LAZER (streaming, jogos - menor prioridade)
   { id: 'netflix', name: 'Netflix', domain: 'netflix.com', defaultCategory: 'Lazer', defaultTags: ['Streaming'], isRecurring: true, defaultAmount: 55.90, defaultCurrency: Currency.BRL, iconName: 'Tv' },
   { id: 'spotify', name: 'Spotify', domain: 'spotify.com', defaultCategory: 'Lazer', defaultTags: ['Música'], isRecurring: true, defaultAmount: 21.90, defaultCurrency: Currency.BRL, iconName: 'Music' },
@@ -307,12 +342,12 @@ export const CATEGORY_ICONS: Record<string, string> = {
 
 // --- New: Calendar Events ---
 export interface CalendarEvent {
-    id: string;
-    date: Date;
-    title: string;
-    amount?: number;
-    currency?: Currency;
-    type: 'INCOME' | 'EXPENSE' | 'PROJECT_START' | 'PROJECT_DUE' | 'TRIAL_END';
-    status?: 'PAID' | 'PENDING' | 'WARNING';
-    meta?: any; // To store project/expense ID
+  id: string;
+  date: Date;
+  title: string;
+  amount?: number;
+  currency?: Currency;
+  type: 'INCOME' | 'EXPENSE' | 'PROJECT_START' | 'PROJECT_DUE' | 'TRIAL_END';
+  status?: 'PAID' | 'PENDING' | 'WARNING';
+  meta?: any; // To store project/expense ID
 }

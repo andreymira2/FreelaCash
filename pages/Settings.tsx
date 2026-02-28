@@ -72,7 +72,9 @@ const Settings: React.FC = () => {
     };
 
     const handleExport = () => {
-        const confirmed = window.confirm("Atenção: O backup contém dados sensíveis como seu CPF e Chave PIX. Mantenha este arquivo em um local seguro. Deseja continuar?");
+        const confirmed = window.confirm(
+            "ALERTA DE SEGURANÇA O backup a seguir contém dados altamente sensíveis, incluindo seu CPF e Chave PIX. Mantenha este arquivo em um local seguro e offline. Deseja continuar o download?"
+        );
         if (!confirmed) return;
 
         const dataStr = exportData();
@@ -260,7 +262,11 @@ const Settings: React.FC = () => {
                                             {errors.taxId && <p className="text-[10px] text-semantic-red font-bold absolute -bottom-1 left-1">{errors.taxId}</p>}
                                             {!profileForm.taxId && (
                                                 <button
-                                                    onClick={() => setShowCPFToggle(false)}
+                                                    onClick={() => {
+                                                        // Scrub the taxId if they close the prompt
+                                                        setProfileForm(prev => ({ ...prev, taxId: undefined }));
+                                                        setShowCPFToggle(false);
+                                                    }}
                                                     className="absolute top-0 right-0 text-ink-dim hover:text-white p-1"
                                                 >
                                                     <XCircle size={14} />

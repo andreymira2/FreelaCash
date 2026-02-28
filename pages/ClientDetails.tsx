@@ -1,56 +1,33 @@
 import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { PageHeader, Card, Avatar, CurrencyDisplay, Badge, Button, EmptyState } from '../components/ui';
+import { Card, Avatar, CurrencyDisplay, Badge, Button, EmptyState, PageHeader } from '../components/ui';
 import BillingModal from '../components/BillingModal';
-import { useAllProjectFinancials } from '../hooks/useFinancialEngine';
-import { ArrowLeft, Plus, Send, DollarSign, Briefcase, TrendingUp, Calendar, Repeat } from 'lucide-react';
-import { ProjectStatus, ProjectContractType, PaymentStatus, CURRENCY_SYMBOLS } from '../types';
+import { ProjectCard } from '../components/ProjectCard';
+import { useClientDetailsModel } from '../hooks/useFinancialEngine';
+import { ArrowLeft, Plus, Send, DollarSign, Briefcase, TrendingUp, Calendar, Repeat, AlertTriangle, FileText } from 'lucide-react';
+import { ProjectStatus, PaymentStatus } from '../types';
 
 const ClientDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { clients, projects, settings, userProfile } = useData();
-    
-    const client = clients.find(c => c.id === id);
-    const clientProjects = useMemo(() => projects.filter(p => p.clientId === id), [projects, id]);
-    const projectFinancials = useAllProjectFinancials();
-    
-    const financialsMap = useMemo(() => {
-        const map: Record<string, typeof projectFinancials[0]> = {};
-        projectFinancials.forEach(pf => { map[pf.projectId] = pf; });
-        return map;
-    }, [projectFinancials]);
+    const { settings, userProfile } = useData();
+    const model = useClientDetailsModel(id);
 
-    const stats = useMemo(() => {
-        let totalEarned = 0;
-        let totalPending = 0;
-        let mrr = 0;
-        let projectCount = clientProjects.length;
-        let activeCount = 0;
+    const [showBillingModal, setShowBillingModal] = useState(false);
 
-        clientProjects.forEach(p => {
-            const pf = financialsMap[p.id];
-            if (!pf) return;
-            
-            totalEarned += pf.paid;
-            totalPending += pf.remaining;
-            
-            const isRetainer = p.contractType === ProjectContractType.RETAINER || 
-                               p.contractType === ProjectContractType.RECURRING_FIXED;
-            if (isRetainer && (p.status === ProjectStatus.ACTIVE || p.status === ProjectStatus.ONGOING)) {
-                mrr += pf.net;
-                activeCount++;
-            } else if (p.status === ProjectStatus.ACTIVE || p.status === ProjectStatus.ONGOING) {
-                activeCount++;
-            }
-        });
+    if (!model) {
+        return (
+            <div className="max-w-3xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
+                <EmptyState title="Cliente não encontrado" description="Este cliente não existe ou foi removido." action={<Button variant="primary" onClick={() => navigate('/projects')}>Voltar</Button>} />
+            </div>
+        );
+    }
 
-        return { totalEarned, totalPending, mrr, projectCount, activeCount };
-    }, [clientProjects, financialsMap]);
+    const { client, metrics, projects, summary12Months, receivables, contracts } = model;
 
-    const relationshipDuration = useMemo(() => {
-        if (!client?.firstProjectDate) return null;
+    const relationshipDuration = (() => {
+        if (!client.firstProjectDate) return null;
         const start = new Date(client.firstProjectDate);
         const now = new Date();
         const months = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30));
@@ -61,17 +38,7 @@ const ClientDetails: React.FC = () => {
         const remainingMonths = months % 12;
         if (remainingMonths === 0) return `${years} ano${years > 1 ? 's' : ''} de relacionamento`;
         return `${years} ano${years > 1 ? 's' : ''} e ${remainingMonths} meses`;
-    }, [client]);
-
-    const [showBillingModal, setShowBillingModal] = useState(false);
-
-    if (!client) {
-        return (
-            <div className="max-w-3xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
-                <EmptyState title="Cliente não encontrado" description="Este cliente não existe ou foi removido." action={<Button variant="primary" onClick={() => navigate('/projects')}>Voltar</Button>} />
-            </div>
-        );
-    }
+    })();
 
     return (
         <div className="max-w-5xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 pb-24 animate-in fade-in">
@@ -88,7 +55,7 @@ const ClientDetails: React.FC = () => {
                     {relationshipDuration && <p className="text-xs text-ink-dim mt-1">{relationshipDuration}</p>}
                 </div>
                 <div className="flex gap-3">
-                    {stats.totalPending > 0 && (
+                    {receivables.length > 0 && (
                         <Button variant="primary" onClick={() => setShowBillingModal(true)} className="h-12 px-6">
                             <Send size={20} /> Cobrar
                         </Button>
@@ -104,10 +71,10 @@ const ClientDetails: React.FC = () => {
                 <div className="bg-base-card rounded-2xl p-4 border border-white/5">
                     <div className="flex items-center gap-2 mb-2">
                         <DollarSign size={16} className="text-brand" />
-                        <span className="text-xs text-ink-gray font-medium">Total Recebido</span>
+                        <span className="text-xs text-ink-gray font-medium">Faturamento Total</span>
                     </div>
                     <p className="text-xl font-bold text-brand">
-                        <CurrencyDisplay amount={stats.totalEarned} currency={settings.mainCurrency} />
+                        <CurrencyDisplay amount={metrics.totalRevenueConverted} currency={settings.mainCurrency} />
                     </p>
                 </div>
                 <div className="bg-base-card rounded-2xl p-4 border border-white/5">
@@ -116,16 +83,19 @@ const ClientDetails: React.FC = () => {
                         <span className="text-xs text-ink-gray font-medium">A Receber</span>
                     </div>
                     <p className="text-xl font-bold text-semantic-yellow">
-                        <CurrencyDisplay amount={stats.totalPending} currency={settings.mainCurrency} />
+                        <CurrencyDisplay
+                            amount={receivables.reduce((acc, r) => acc + r.amountConverted, 0)}
+                            currency={settings.mainCurrency}
+                        />
                     </p>
                 </div>
                 <div className="bg-base-card rounded-2xl p-4 border border-white/5">
                     <div className="flex items-center gap-2 mb-2">
-                        <Repeat size={16} className="text-brand" />
-                        <span className="text-xs text-ink-gray font-medium">MRR</span>
+                        <TrendingUp size={16} className="text-brand" />
+                        <span className="text-xs text-ink-gray font-medium">Share de Receita</span>
                     </div>
                     <p className="text-xl font-bold text-brand">
-                        <CurrencyDisplay amount={stats.mrr} currency={settings.mainCurrency} />
+                        {metrics.shareOfRevenue.toFixed(1)}%
                     </p>
                 </div>
                 <div className="bg-base-card rounded-2xl p-4 border border-white/5">
@@ -133,103 +103,145 @@ const ClientDetails: React.FC = () => {
                         <Briefcase size={16} className="text-ink-gray" />
                         <span className="text-xs text-ink-gray font-medium">Projetos</span>
                     </div>
-                    <p className="text-xl font-bold text-white">{stats.projectCount} <span className="text-ink-gray text-sm font-normal">({stats.activeCount} ativos)</span></p>
+                    <p className="text-xl font-bold text-white">{projects.length} <span className="text-ink-gray text-sm font-normal">({projects.filter(p => [ProjectStatus.ACTIVE, ProjectStatus.ONGOING].includes(p.status)).length} ativos)</span></p>
                 </div>
             </div>
 
-            {/* Projects List */}
-            <Card>
-                <h2 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
-                    <Briefcase size={20} className="text-brand" /> Projetos
-                </h2>
-                {clientProjects.length > 0 ? (
-                    <div className="space-y-3">
-                        {clientProjects.map(p => {
-                            const pf = financialsMap[p.id];
-                            const isRetainer = p.contractType === ProjectContractType.RETAINER || p.contractType === ProjectContractType.RECURRING_FIXED;
+            {/* Progressive Disclosure: Dependency Alert */}
+            {metrics.hasHighDependency && (
+                <div className="bg-semantic-yellow/10 border border-semantic-yellow/20 rounded-2xl p-5 flex items-start gap-4">
+                    <div className="bg-semantic-yellow/20 p-2 rounded-lg text-semantic-yellow">
+                        <AlertTriangle size={24} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-semantic-yellow">Alerta de Dependência</h3>
+                        <p className="text-sm text-ink-gray mt-1">Este cliente representa {metrics.shareOfRevenue.toFixed(1)}% do seu faturamento histórico. Considere diversificar sua carteira para mitigar riscos.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Progressive Disclosure: 12-Month Chart */}
+            {metrics.hasHighDependency && (
+                <Card>
+                    <h2 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
+                        <TrendingUp size={20} className="text-brand" /> Histórico 12 Meses
+                    </h2>
+                    <div className="h-[200px] w-full mt-4 flex items-end gap-2 pb-6">
+                        {summary12Months.map((m, i) => {
+                            const max = Math.max(...summary12Months.map(x => x.revenue), 1);
+                            const height = (m.revenue / max) * 100;
                             return (
-                                <div key={p.id} onClick={() => navigate(`/project/${p.id}`)} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-brand/30 cursor-pointer transition-all">
-                                    <div className="flex items-center gap-4 min-w-0">
-                                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
-                                            {isRetainer ? <Repeat size={18} className="text-brand" /> : <Briefcase size={18} className="text-ink-gray" />}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="font-bold text-white truncate">{p.category}</p>
-                                            <div className="flex items-center gap-2 text-xs text-ink-gray">
-                                                <Badge status={p.status} />
-                                                {p.startDate && <span>Início: {new Date(p.startDate).toLocaleDateString()}</span>}
-                                            </div>
+                                <div key={m.month} className="flex-1 flex flex-col items-center gap-2 group relative">
+                                    <div
+                                        className="w-full bg-brand/20 rounded-t-md group-hover:bg-brand transition-all duration-300 relative"
+                                        style={{ height: `${height}%` }}
+                                    >
+                                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                            <CurrencyDisplay amount={m.revenue} currency={settings.mainCurrency} />
                                         </div>
                                     </div>
-                                    <div className="text-right shrink-0">
-                                        <p className="font-bold text-white">
-                                            <CurrencyDisplay amount={pf?.net || 0} currency={p.currency} />
-                                        </p>
-                                        {pf && pf.remaining > 0 && (
-                                            <p className="text-xs text-semantic-yellow">
-                                                Pendente: <CurrencyDisplay amount={pf.remaining} currency={p.currency} />
-                                            </p>
-                                        )}
-                                    </div>
+                                    <span className="text-[10px] text-ink-dim font-bold transform -rotate-45 md:rotate-0 mt-2">
+                                        {m.month.split('-')[1]}/{m.month.split('-')[0].slice(2)}
+                                    </span>
                                 </div>
                             );
                         })}
                     </div>
+                </Card>
+            )}
+
+            {/* Contracts Section (Progressive Disclosure) */}
+            {contracts && contracts.length > 0 && (
+                <div className="space-y-4">
+                    <h2 className="font-bold text-white text-lg flex items-center gap-2">
+                        <Repeat size={20} className="text-blue-400" /> Contratos com este Cliente
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {contracts.map(contract => (
+                            <div
+                                key={contract.id}
+                                onClick={() => navigate(`/contracts/${contract.id}`)}
+                                className="bg-base-card border border-white/5 rounded-2xl p-5 hover:bg-white/10 transition-all cursor-pointer group"
+                            >
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-400 group-hover:bg-blue-500 group-hover:text-black transition-all">
+                                        <FileText size={20} />
+                                    </div>
+                                    <Badge status={contract.isActive ? ProjectStatus.ACTIVE : ProjectStatus.PAID} label={contract.isActive ? 'Ativo' : 'Inativo'} />
+                                </div>
+                                <h3 className="font-bold text-white mb-1">{contract.title}</h3>
+                                <div className="flex justify-between items-end">
+                                    <div className="text-xs text-ink-dim space-y-1">
+                                        <p>{contract.activeProjectsCount} projetos vinculados</p>
+                                        <p>Início: {new Date(contract.startDate).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] text-ink-dim uppercase font-bold tracking-widest">Retenção</p>
+                                        <p className="font-black text-white">
+                                            <CurrencyDisplay amount={contract.retainerAmount} currency={contract.currency} />
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Projects List with modular cards */}
+            <div className="space-y-4">
+                <h2 className="font-bold text-white text-lg flex items-center gap-2">
+                    <Briefcase size={20} className="text-brand" /> Projetos sob este Cliente
+                </h2>
+                {projects.length > 0 ? (
+                    <div className="space-y-4">
+                        {projects.map(p => (
+                            <ProjectCard
+                                key={p.id}
+                                project={p}
+                                onArchive={() => { }} // Hooked later if needed, but keeping simple for now
+                            />
+                        ))}
+                    </div>
                 ) : (
-                    <div className="text-center py-8 text-ink-dim text-sm border border-dashed border-white/10 rounded-xl">
-                        Nenhum projeto com este cliente ainda.
+                    <div className="text-center py-12 bg-base-card border border-dashed border-white/10 rounded-2xl">
+                        <Briefcase size={40} className="mx-auto text-ink-dim mb-4 opacity-20" />
+                        <p className="text-ink-dim italic">Nenhum projeto encontrado para este cliente.</p>
                     </div>
                 )}
-            </Card>
+            </div>
 
-            {/* Payment History */}
-            <Card>
-                <h2 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
-                    <Calendar size={20} className="text-brand" /> Histórico de Pagamentos
-                </h2>
-                {(() => {
-                    const allPayments = clientProjects.flatMap(p => 
-                        (p.payments || []).map(pay => ({ ...pay, projectId: p.id, projectName: p.category, currency: p.currency }))
-                    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                    
-                    if (allPayments.length === 0) {
-                        return (
-                            <div className="text-center py-8 text-ink-dim text-sm border border-dashed border-white/10 rounded-xl">
-                                Nenhum pagamento registrado.
-                            </div>
-                        );
-                    }
-
-                    return (
-                        <div className="space-y-2">
-                            {allPayments.slice(0, 10).map(pay => {
-                                const isPaid = pay.status === PaymentStatus.PAID || !pay.status;
-                                return (
-                                    <div key={pay.id} className={`flex items-center justify-between p-3 rounded-lg ${isPaid ? 'bg-white/5' : 'bg-semantic-yellow/10'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPaid ? 'bg-brand/10 text-brand' : 'bg-semantic-yellow/10 text-semantic-yellow'}`}>
-                                                <DollarSign size={14} />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium text-white">
-                                                    <CurrencyDisplay amount={pay.amount} currency={pay.currency} />
-                                                </p>
-                                                <p className="text-xs text-ink-gray">{pay.projectName} • {new Date(pay.date).toLocaleDateString()}</p>
-                                            </div>
-                                        </div>
-                                        <span className={`text-xs font-medium px-2 py-1 rounded ${isPaid ? 'bg-brand/10 text-brand' : 'bg-semantic-yellow/10 text-semantic-yellow'}`}>
-                                            {isPaid ? 'Recebido' : 'Agendado'}
-                                        </span>
+            {/* Receivables Specific to this Client */}
+            {receivables.length > 0 && (
+                <Card>
+                    <h2 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
+                        <TrendingUp size={20} className="text-semantic-yellow" /> Recebíveis em Aberto
+                    </h2>
+                    <div className="space-y-3">
+                        {receivables.map(r => (
+                            <div key={r.id} className="p-4 rounded-xl bg-semantic-yellow/5 border border-semantic-yellow/10 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-semantic-yellow/10 flex items-center justify-center text-semantic-yellow">
+                                        <Calendar size={18} />
                                     </div>
-                                );
-                            })}
-                            {allPayments.length > 10 && (
-                                <p className="text-center text-xs text-ink-gray pt-2">Mostrando últimos 10 de {allPayments.length} pagamentos</p>
-                            )}
-                        </div>
-                    );
-                })()}
-            </Card>
+                                    <div>
+                                        <p className="font-bold text-white">{r.date.toLocaleDateString()}</p>
+                                        <p className="text-xs text-ink-gray">Vencimento para o projeto {r.projectId.slice(0, 8)}...</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-black text-semantic-yellow text-lg">
+                                        <CurrencyDisplay amount={r.amount} currency={r.currency} />
+                                    </p>
+                                    <div className="flex items-center gap-1 justify-end">
+                                        {r.isOverdue && <Badge status={PaymentStatus.OVERDUE} label="Atrasado" />}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
 
             {/* Billing Modal */}
             <BillingModal
@@ -238,9 +250,9 @@ const ClientDetails: React.FC = () => {
                 clientName={client.name}
                 projectCategory="Todos os projetos"
                 currency={settings.mainCurrency}
-                grossAmount={stats.totalEarned + stats.totalPending}
-                paidAmount={stats.totalEarned}
-                remainingAmount={stats.totalPending}
+                grossAmount={metrics.totalRevenueConverted + receivables.reduce((acc, r) => acc + r.amountConverted, 0)}
+                paidAmount={metrics.totalRevenueConverted}
+                remainingAmount={receivables.reduce((acc, r) => acc + r.amountConverted, 0)}
                 pixKey={userProfile.pixKey}
                 userName={userProfile.name}
                 taxId={userProfile.taxId}

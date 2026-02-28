@@ -47,6 +47,24 @@ CREATE TABLE IF NOT EXISTS clients (
   tags TEXT[],
   is_archived BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  contract_ids UUID[]
+);
+
+-- Contracts Table
+CREATE TABLE IF NOT EXISTS contracts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  client_id UUID REFERENCES clients(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  retainer_amount NUMERIC NOT NULL DEFAULT 0,
+  currency TEXT DEFAULT 'BRL',
+  start_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  end_date TIMESTAMPTZ,
+  is_active BOOLEAN DEFAULT TRUE,
+  items JSONB DEFAULT '[]',
+  project_ids UUID[] DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -55,6 +73,7 @@ CREATE TABLE IF NOT EXISTS projects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
+  contract_id UUID REFERENCES contracts(id) ON DELETE SET NULL,
   client_name TEXT NOT NULL,
   type TEXT NOT NULL DEFAULT 'FIXED',
   contract_type TEXT DEFAULT 'ONE_OFF',
@@ -195,6 +214,13 @@ CREATE POLICY "Users can view own expenses" ON expenses FOR SELECT USING (auth.u
 CREATE POLICY "Users can insert own expenses" ON expenses FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own expenses" ON expenses FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own expenses" ON expenses FOR DELETE USING (auth.uid() = user_id);
+
+-- Contracts Policies
+ALTER TABLE contracts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own contracts" ON contracts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own contracts" ON contracts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own contracts" ON contracts FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own contracts" ON contracts FOR DELETE USING (auth.uid() = user_id);
 
 -- Function to auto-create user profile and settings on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()

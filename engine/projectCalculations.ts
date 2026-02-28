@@ -1,5 +1,15 @@
-import { Project, Expense, Payment, PaymentStatus, ProjectStatus, ProjectContractType, Currency } from '../types';
-import { ProjectFinancials, FinancialEngineConfig, Receivable } from './types';
+import { Project, Expense, Payment, PaymentStatus, ProjectStatus, ProjectContractType, Currency, Client } from '../types';
+import {
+  ProjectFinancials, FinancialEngineConfig, NextBestAction,
+  DashboardSignals,
+  ProjectCardModel,
+  ClientCardModel,
+  ClientDetailsModel,
+  ClientMonthlyRevenue,
+  Receivable,
+  GroupedActivity,
+  ActivityItem
+} from './types';
 import { safeFloat, convertCurrency } from './currencyUtils';
 import { isOverdue, getDaysDifference } from './dateUtils';
 
@@ -22,7 +32,7 @@ export function calculateProjectFinancials(
 
   const adjustmentsTotal = (project.adjustments || [])
     .reduce((acc, adj) => safeFloat(acc + adj.amount), 0);
-  
+
   const gross = safeFloat(baseRate + adjustmentsTotal);
   const feePercent = project.platformFee && !isNaN(project.platformFee) ? project.platformFee : 0;
   const fees = safeFloat(gross * (feePercent / 100));
@@ -61,9 +71,9 @@ export function calculateProjectFinancials(
       const exp = expenses.find(e => e.id === expId);
       if (exp) {
         expenseTotal = safeFloat(expenseTotal + convertCurrency(
-          exp.amount, 
-          exp.currency, 
-          project.currency, 
+          exp.amount,
+          exp.currency,
+          project.currency,
           config.exchangeRates
         ));
       }
@@ -109,8 +119,19 @@ export function getProjectReceivables(
   projects.forEach(p => {
     p.payments?.forEach(pay => {
       if (pay.status === PaymentStatus.SCHEDULED) {
-        const payDate = new Date(pay.date);
-        const isPaymentOverdue = isOverdue(payDate);
+        let isDateMissing = false;
+        let payDate = new Date(pay.date);
+
+        // Date missing degradation rule
+        if (isNaN(payDate.getTime())) {
+          isDateMissing = true;
+          // Fallback to project end date or today for an estimated anchor
+          payDate = p.dueDate ? new Date(p.dueDate) : today;
+        } else if (!pay.date || String(pay.date).trim() === '') {
+          isDateMissing = true;
+        }
+
+        const isPaymentOverdue = isDateMissing ? false : isOverdue(payDate);
         const daysOverdue = isPaymentOverdue ? getDaysDifference(payDate, today) : 0;
 
         receivables.push({
@@ -122,7 +143,8 @@ export function getProjectReceivables(
           currency: p.currency,
           date: payDate,
           isOverdue: isPaymentOverdue,
-          daysOverdue
+          daysOverdue,
+          confidence: isDateMissing ? 'estimated' : 'confirmed'
         });
       }
     });
@@ -139,8 +161,8 @@ export function getRecurringIncome(
 
   projects.forEach(p => {
     const isActive = p.status === ProjectStatus.ACTIVE || p.status === ProjectStatus.ONGOING;
-    const isRecurring = p.contractType === ProjectContractType.RETAINER || 
-                        p.contractType === ProjectContractType.RECURRING_FIXED;
+    const isRecurring = p.contractType === ProjectContractType.RETAINER ||
+      p.contractType === ProjectContractType.RECURRING_FIXED;
 
     if (isActive && isRecurring) {
       const feePercent = p.platformFee || 0;
@@ -173,4 +195,268 @@ export function getProjectIncomeInPeriod(
   });
 
   return { total, byClient };
+}
+
+export function getProjectsListModel(
+  projects: Project[],
+  config: FinancialEngineConfig,
+  filters?: { status?: string, searchQuery?: string, showOnlyPending?: boolean }
+): { projects: ProjectCardModel[], suggestGroupByClient: boolean } {
+  const models: ProjectCardModel[] = [];
+  const clientCounts: Record<string, number> = {};
+
+  // First pass: build models and count client concentrations
+  for (const project of projects) {
+    if (project.status === ProjectStatus.ACTIVE || project.status === ProjectStatus.ONGOING) {
+      clientCounts[project.clientName] = (clientCounts[project.clientName] || 0) + 1;
+    }
+
+    const fin = calculateProjectFinancials(project, [], config);
+
+    models.push({
+      id: project.id,
+      title: project.category || project.clientName || 'Projeto sem nome',
+      clientName: project.clientName,
+      status: project.status,
+      category: project.category,
+      isArchived: !!project.isArchived,
+      createdAt: project.createdAt,
+      tags: project.tags || [],
+      moneySummary: {
+        gross: fin.gross,
+        paid: fin.paid,
+        remaining: fin.remaining,
+        currency: fin.currency,
+        isOverdue: fin.isOverdue,
+        nextPayment: fin.nextPayment
+      }
+    });
+  }
+
+  // Determine if grouping is recommended
+  let multiProjectClients = 0;
+  for (const clientName in clientCounts) {
+    if (clientCounts[clientName] > 1) {
+      multiProjectClients++;
+    }
+  }
+  const suggestGroupByClient = multiProjectClients >= 2 || (Object.keys(clientCounts).length > 0 && multiProjectClients / Object.keys(clientCounts).length > 0.3);
+
+  // Apply filters
+  let result = models;
+  if (filters) {
+    if (filters.status && filters.status !== 'ALL') {
+      result = result.filter(p => p.status === filters.status);
+    }
+    if (filters.searchQuery) {
+      const q = filters.searchQuery.toLowerCase();
+      result = result.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.clientName.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+      );
+    }
+    if (filters.showOnlyPending) {
+      result = result.filter(p => p.moneySummary.remaining > 0 || p.moneySummary.isOverdue);
+    }
+  }
+
+  // Sort: Overdue first, then newest
+  result.sort((a, b) => {
+    if (a.moneySummary.isOverdue && !b.moneySummary.isOverdue) return -1;
+    if (!a.moneySummary.isOverdue && b.moneySummary.isOverdue) return 1;
+    return b.createdAt - a.createdAt;
+  });
+
+  return { projects: result, suggestGroupByClient };
+}
+
+export function getClientsListModel(
+  clients: Client[],
+  projects: Project[],
+  config: FinancialEngineConfig,
+  filters?: { searchQuery?: string }
+): ClientCardModel[] {
+  // Aggregate revenue and counts per client
+  const clientStats: Record<string, { totalRevenue: number; activeProjects: number; totalProjects: number }> = {};
+  let totalAgencyRevenue = 0;
+
+  clients.forEach(c => {
+    clientStats[c.id] = { totalRevenue: 0, activeProjects: 0, totalProjects: 0 };
+  });
+
+  projects.forEach(p => {
+    if (!p.clientId || !clientStats[p.clientId]) return;
+
+    const stats = clientStats[p.clientId];
+    stats.totalProjects++;
+
+    if (p.status === ProjectStatus.ACTIVE || p.status === ProjectStatus.ONGOING) {
+      stats.activeProjects++;
+    }
+
+    const { paid } = calculateProjectFinancials(p, [], config);
+    const paidConverted = convertCurrency(paid, p.currency, config.mainCurrency, config.exchangeRates);
+
+    stats.totalRevenue += paidConverted;
+    totalAgencyRevenue += paidConverted;
+  });
+
+  let models: ClientCardModel[] = clients.map(client => {
+    const stats = clientStats[client.id];
+    let shareOfRevenue = 0;
+    if (totalAgencyRevenue > 0) {
+      shareOfRevenue = (stats.totalRevenue / totalAgencyRevenue) * 100;
+    }
+
+    const hasHighDependency = shareOfRevenue > 30 || stats.activeProjects > 1;
+
+    return {
+      clientId: client.id,
+      clientName: client.name,
+      totalRevenueConverted: stats.totalRevenue,
+      shareOfRevenue,
+      activeProjectsCount: stats.activeProjects,
+      totalProjectsCount: stats.totalProjects,
+      hasHighDependency,
+    };
+  });
+
+  // Apply filters and sort
+  if (filters?.searchQuery) {
+    const q = filters.searchQuery.toLowerCase();
+    models = models.filter(m => m.clientName.toLowerCase().includes(q));
+  }
+
+  // Default sort by relevance (revenue first, then active projects)
+  models.sort((a, b) => {
+    if (b.totalRevenueConverted !== a.totalRevenueConverted) {
+      return b.totalRevenueConverted - a.totalRevenueConverted;
+    }
+    return b.activeProjectsCount - a.activeProjectsCount;
+  });
+
+  return models;
+}
+
+export function getClientDetailsModel(
+  clientId: string,
+  clients: Client[],
+  projects: Project[],
+  config: FinancialEngineConfig
+): ClientDetailsModel | null {
+  const client = clients.find(c => c.id === clientId);
+  if (!client) return null;
+
+  const clientProjects = projects.filter(p => p.clientId === clientId);
+
+  // Calculate agency baseline to determine shareOfRevenue
+  let totalAgencyRevenue = 0;
+  let clientRevenue = 0;
+
+  projects.forEach(p => {
+    const { paid } = calculateProjectFinancials(p, [], config);
+    const paidConverted = convertCurrency(paid, p.currency, config.mainCurrency, config.exchangeRates);
+    totalAgencyRevenue += paidConverted;
+
+    if (p.clientId === clientId) {
+      clientRevenue += paidConverted;
+    }
+  });
+
+  let shareOfRevenue = 0;
+  if (totalAgencyRevenue > 0) {
+    shareOfRevenue = (clientRevenue / totalAgencyRevenue) * 100;
+  }
+
+  const activeProjectsCount = clientProjects.filter(p => p.status === ProjectStatus.ACTIVE || p.status === ProjectStatus.ONGOING).length;
+  const hasHighDependency = shareOfRevenue > 30 || activeProjectsCount > 1;
+
+  // Generate the ProjectCardModels for the subset
+  const { projects: projectModels } = getProjectsListModel(clientProjects, config);
+
+  // Grab local receivables specifically for this project subset
+  const receivables = getProjectReceivables(clientProjects, config);
+
+  // Generate 12 months rolling summary
+  const summary12Months: ClientMonthlyRevenue[] = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    let monthRevenue = 0;
+    clientProjects.forEach(p => {
+      p.payments?.forEach(pay => {
+        if (pay.status === PaymentStatus.PAID && pay.date.startsWith(monthKey)) {
+          monthRevenue += convertCurrency(pay.amount, p.currency, config.mainCurrency, config.exchangeRates);
+        }
+      });
+    });
+
+    summary12Months.push({ month: monthKey, revenue: monthRevenue });
+  }
+
+  return {
+    client,
+    metrics: {
+      shareOfRevenue,
+      hasHighDependency,
+      totalRevenueConverted: clientRevenue
+    },
+    summary12Months,
+    projects: projectModels,
+    receivables
+  };
+}
+
+export function getRecentActivity(
+  projects: Project[],
+  expenses: Expense[],
+  limit: number = 10
+): GroupedActivity[] {
+  const activities: ActivityItem[] = [];
+
+  projects.forEach(p => {
+    p.payments.forEach(pay => {
+      activities.push({
+        id: pay.id,
+        title: `Pagamento: ${p.clientName}`,
+        amount: pay.amount,
+        currency: p.currency,
+        date: pay.date,
+        type: 'income',
+        status: pay.status
+      });
+    });
+  });
+
+  expenses.forEach(e => {
+    activities.push({
+      id: e.id,
+      title: e.title,
+      subtitle: e.category,
+      amount: e.amount,
+      currency: e.currency,
+      date: e.date,
+      type: 'expense',
+      status: e.status
+    });
+  });
+
+  activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const recent = activities.slice(0, limit);
+
+  const grouped: GroupedActivity[] = [];
+  recent.forEach(item => {
+    const dateStr = item.date.split('T')[0];
+    let group = grouped.find(g => g.date === dateStr);
+    if (!group) {
+      group = { date: dateStr, items: [] };
+      grouped.push(group);
+    }
+    group.items.push(item);
+  });
+
+  return grouped;
 }

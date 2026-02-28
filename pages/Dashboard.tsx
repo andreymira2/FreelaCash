@@ -5,12 +5,12 @@ import { Card, CurrencyDisplay, Button, Avatar, DateRangeSelect, EmptyState, Inp
 import { ProjectStatus, PaymentStatus } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { Plus, X, ArrowUpRight, ArrowDownLeft, Activity, Briefcase, Target, Clock, CheckCircle2, AlertTriangle, AlertCircle, ArrowRight, Calendar, TrendingUp } from 'lucide-react';
-import { 
-    useFinancialSnapshot, 
-    useHealthScore, 
-    useReceivables, 
-    useExpenseReminders, 
-    useRecentActivity, 
+import {
+    useFinancialSnapshot,
+    useHealthScore,
+    useReceivables,
+    useExpenseReminders,
+    useRecentActivity,
     useActiveProjectFinancials
 } from '../hooks/useFinancialEngine';
 import { parseLocalDateToISO, parseNumber, toInputDate } from '../utils/format';
@@ -20,7 +20,7 @@ const getRelativeTime = (date: Date): string => {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const diffDays = Math.floor((today.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'Hoje';
     if (diffDays === 1) return 'Ontem';
     if (diffDays < 7) return `${diffDays} dias atrás`;
@@ -32,7 +32,7 @@ const getFutureRelativeTime = (date: Date): string => {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const diffDays = Math.floor((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) return 'Atrasado';
     if (diffDays === 0) return 'Hoje';
     if (diffDays === 1) return 'Amanhã';
@@ -63,22 +63,22 @@ const Dashboard: React.FC = () => {
         return 'Boa noite';
     }, []);
 
-    const activeProjects = useMemo(() => 
+    const activeProjects = useMemo(() =>
         activeProjectFinancials.slice(0, 5),
         [activeProjectFinancials]
     );
 
-    const overdueReceivables = useMemo(() => 
+    const overdueReceivables = useMemo(() =>
         receivables.filter(r => r.isOverdue),
         [receivables]
     );
 
-    const nextReceivable = useMemo(() => 
+    const nextReceivable = useMemo(() =>
         receivables.find(r => !r.isOverdue),
         [receivables]
     );
 
-    const nextExpense = useMemo(() => 
+    const nextExpense = useMemo(() =>
         expenseReminders.find(e => !e.isPaid),
         [expenseReminders]
     );
@@ -96,7 +96,7 @@ const Dashboard: React.FC = () => {
                 actionLabel: 'Ver projetos'
             };
         }
-        
+
         const todayExpenses = expenseReminders.filter(e => !e.isPaid && e.daysUntilDue === 0);
         if (todayExpenses.length > 0) {
             const total = todayExpenses.reduce((acc, e) => acc + e.amountConverted, 0);
@@ -152,7 +152,7 @@ const Dashboard: React.FC = () => {
         toggleExpensePayment(expenseId, new Date());
     };
 
-    const activeProjectsList = useMemo(() => 
+    const activeProjectsList = useMemo(() =>
         projects.filter(p => p.status === ProjectStatus.ACTIVE || p.status === ProjectStatus.ONGOING),
         [projects]
     );
@@ -168,23 +168,23 @@ const Dashboard: React.FC = () => {
     const getProjectStatus = (projectFinancials: typeof activeProjectFinancials[0]) => {
         const project = projects.find(p => p.id === projectFinancials.projectId);
         if (!project) return { status: 'normal', label: '' };
-        
+
         if (projectFinancials.isOverdue) {
             return { status: 'overdue', label: 'Atrasado', color: 'text-semantic-red' };
         }
-        
+
         const lastPaymentDate = project.payments
             ?.filter(p => p.status === PaymentStatus.PAID)
             .map(p => new Date(p.date))
             .sort((a, b) => b.getTime() - a.getTime())[0];
-        
+
         if (lastPaymentDate) {
             const daysSincePayment = Math.floor((Date.now() - lastPaymentDate.getTime()) / (1000 * 60 * 60 * 24));
             if (daysSincePayment > 30) {
                 return { status: 'stale', label: `${daysSincePayment}d parado`, color: 'text-semantic-yellow' };
             }
         }
-        
+
         return { status: 'active', label: 'Fluindo', color: 'text-brand' };
     };
 
@@ -225,17 +225,16 @@ const Dashboard: React.FC = () => {
             />
 
             {alertInfo && (
-                <div 
-                    className={`flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all ${
-                        alertInfo.type === 'critical' 
-                            ? 'bg-semantic-red/10 border border-semantic-red/30 hover:bg-semantic-red/20' 
+                <div
+                    className={`flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all ${alertInfo.type === 'critical'
+                            ? 'bg-semantic-red/10 border border-semantic-red/30 hover:bg-semantic-red/20'
                             : 'bg-semantic-yellow/10 border border-semantic-yellow/30 hover:bg-semantic-yellow/20'
-                    }`}
+                        }`}
                     onClick={alertInfo.action}
                 >
-                    <alertInfo.icon 
-                        size={20} 
-                        className={alertInfo.type === 'critical' ? 'text-semantic-red' : 'text-semantic-yellow'} 
+                    <alertInfo.icon
+                        size={20}
+                        className={alertInfo.type === 'critical' ? 'text-semantic-red' : 'text-semantic-yellow'}
                     />
                     <div className="flex-1">
                         <p className={`font-bold text-sm ${alertInfo.type === 'critical' ? 'text-semantic-red' : 'text-semantic-yellow'}`}>
@@ -253,14 +252,14 @@ const Dashboard: React.FC = () => {
             )}
 
             <div className="flex lg:hidden gap-2">
-                <button 
-                    onClick={() => setShowQuickPay(true)} 
+                <button
+                    onClick={() => setShowQuickPay(true)}
                     className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-brand/10 text-brand font-bold text-sm active:scale-95 transition-all"
                 >
                     <ArrowDownLeft size={16} /> Receber
                 </button>
-                <button 
-                    onClick={() => navigate('/expenses')} 
+                <button
+                    onClick={() => navigate('/expenses')}
                     className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white/5 text-white font-bold text-sm active:scale-95 transition-all"
                 >
                     <ArrowUpRight size={16} /> Pagar
@@ -269,7 +268,7 @@ const Dashboard: React.FC = () => {
 
             <Card className="relative overflow-hidden bg-gradient-to-br from-[#1A1A1A] to-black border-white/10 p-0">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-brand/5 rounded-full blur-[80px] pointer-events-none"></div>
-                
+
                 <div className="p-6 md:p-8 relative z-10">
                     <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
                         <div className="flex-1">
@@ -285,8 +284,8 @@ const Dashboard: React.FC = () => {
                             </p>
                             <div className="flex items-center gap-3 max-w-sm">
                                 <div className="h-2 flex-1 bg-white/10 rounded-full overflow-hidden">
-                                    <div 
-                                        className="h-full bg-brand shadow-[0_0_10px_#C6FF3F]" 
+                                    <div
+                                        className="h-full bg-brand shadow-[0_0_10px_#C6FF3F]"
                                         style={{ width: `${goalPercent}%`, transition: 'width 0.8s ease-out' }}
                                     />
                                 </div>
@@ -327,7 +326,7 @@ const Dashboard: React.FC = () => {
                                     <TrendingUp size={10} className="text-semantic-green" /> Próximo Recebimento
                                 </p>
                                 {nextReceivable ? (
-                                    <div 
+                                    <div
                                         className="flex items-center gap-2 cursor-pointer group"
                                         onClick={() => navigate(`/project/${nextReceivable.projectId}`)}
                                     >
@@ -345,7 +344,7 @@ const Dashboard: React.FC = () => {
                                     <Calendar size={10} className="text-semantic-yellow" /> Próxima Conta
                                 </p>
                                 {nextExpense ? (
-                                    <div 
+                                    <div
                                         className="flex items-center gap-2 cursor-pointer group"
                                         onClick={() => navigate(`/expenses/${nextExpense.expenseId}`)}
                                     >
@@ -428,20 +427,19 @@ const Dashboard: React.FC = () => {
                             activeProjects.map(projectFinancials => {
                                 const project = projects.find(p => p.id === projectFinancials.projectId);
                                 if (!project) return null;
-                                const progressPercent = projectFinancials.net > 0 
-                                    ? Math.round((projectFinancials.paid / projectFinancials.net) * 100) 
+                                const progressPercent = projectFinancials.net > 0
+                                    ? Math.round((projectFinancials.paid / projectFinancials.net) * 100)
                                     : 0;
                                 const projectStatus = getProjectStatus(projectFinancials);
-                                
+
                                 return (
                                     <div
                                         key={project.id}
                                         onClick={() => navigate(`/project/${project.id}`)}
-                                        className={`flex items-center gap-3 p-3 rounded-xl bg-base-card border cursor-pointer transition-all group ${
-                                            projectStatus.status === 'overdue' 
-                                                ? 'border-semantic-red/30 hover:border-semantic-red/50' 
+                                        className={`flex items-center gap-3 p-3 rounded-xl bg-base-card border cursor-pointer transition-all group ${projectStatus.status === 'overdue'
+                                                ? 'border-semantic-red/30 hover:border-semantic-red/50'
                                                 : 'border-white/5 hover:border-white/20'
-                                        }`}
+                                            }`}
                                     >
                                         <Avatar name={project.clientName} className="w-8 h-8 rounded-lg text-xs" />
                                         <div className="flex-1 min-w-0">
@@ -457,7 +455,7 @@ const Dashboard: React.FC = () => {
                                             </div>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-                                                    <div 
+                                                    <div
                                                         className={`h-full ${projectStatus.status === 'overdue' ? 'bg-semantic-red' : 'bg-brand'}`}
                                                         style={{ width: `${Math.min(100, progressPercent)}%` }}
                                                     />
@@ -488,8 +486,8 @@ const Dashboard: React.FC = () => {
                     <Card className="w-full max-w-md">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg font-bold text-white">Registrar Recebimento</h3>
-                            <button 
-                                onClick={() => setShowQuickPay(false)} 
+                            <button
+                                onClick={() => setShowQuickPay(false)}
                                 className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"
                             >
                                 <X size={16} className="text-ink-gray" />

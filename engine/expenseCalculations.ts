@@ -1,5 +1,5 @@
-import { Expense, Currency } from '../types';
-import { ExpenseSnapshot, RecurringExpenseProgress, ExpenseReminder, FinancialEngineConfig, MonthKey } from './types';
+import { Expense, Currency, Project } from '../types';
+import { ExpenseSnapshot, RecurringExpenseProgress, ExpenseReminder, FinancialEngineConfig, MonthKey, ProjectMarginModel } from './types';
 import { safeFloat, convertCurrency } from './currencyUtils';
 import { getMonthKey, getCurrentMonth, getDaysDifference, addDays, monthKeyToDate, isDateInRange } from './dateUtils';
 
@@ -10,7 +10,7 @@ export function getExpenseSnapshot(
 ): ExpenseSnapshot {
   const today = new Date();
   const amountConverted = convertCurrency(expense.amount, expense.currency, config.mainCurrency, config.exchangeRates);
-  
+
   let isPaidThisMonth = false;
   let isTrial = false;
   let trialDaysLeft: number | undefined;
@@ -58,7 +58,7 @@ export function getRecurringExpenseProgress(
   const today = new Date();
   const recurringExpenses = expenses.filter(e => e.isRecurring);
   const snapshots: ExpenseSnapshot[] = [];
-  
+
   let paidCount = 0;
   let pendingCount = 0;
   let paidAmount = 0;
@@ -109,12 +109,12 @@ export function getExpenseReminders(
 
   expenses.filter(e => e.isRecurring && e.dueDay).forEach(e => {
     const dueDate = new Date(today.getFullYear(), today.getMonth(), e.dueDay || 15);
-    
+
     if (dueDate >= today && dueDate <= futureDate) {
       const isPaid = e.paymentHistory?.some(
         h => h.monthStr === currentMonth.str && h.status === 'PAID'
       ) || false;
-      
+
       if (e.isTrial && e.trialEndDate && new Date(e.trialEndDate) > today) {
         return;
       }
@@ -152,7 +152,7 @@ export function getExpensesPaidInPeriod(
         if (h.status === 'PAID') {
           const [year, month] = h.monthStr.split('-').map(Number);
           const paymentDate = new Date(year, month - 1, e.dueDay || 15);
-          
+
           if (isDateInRange(paymentDate, start, end)) {
             total = safeFloat(total + val);
             const cat = e.category || 'Outros';
@@ -221,4 +221,63 @@ export function getRecurringExpenseTotal(
   });
 
   return total;
+}
+
+export function getProjectMarginModel(
+  projects: Project[],
+  expenses: Expense[],
+  projectId: string,
+  config: FinancialEngineConfig
+): ProjectMarginModel | null {
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return null;
+
+  // We should ideally use the calculation logic from projectCalculations but for simplicity and to avoid circular deps
+  // We will assume gross revenue comes from project totals
+  // For now let's just implement the logic that aggregates expenses linked to this project
+  const linkedExpenses = expenses.filter(e => e.projectId === projectId);
+  const directCosts = linkedExpenses.reduce((acc, e) => {
+    return safeFloat(acc + convertCurrency(e.amount, e.currency, config.mainCurrency, config.exchangeRates));
+  }, 0);
+
+  // Note: Correct revenue should come from project financials
+  // This will be wired up in FinancialEngine.ts
+  return {
+    projectId,
+    projectTitle: project.clientName + ' - ' + project.category,
+    grossRevenue: 0, // Will be populated by the Engine
+    directCosts,
+    margin: 0,
+    marginPercent: 0
+  };
+}
+
+export function getExpensesListModel(
+  expenses: Expense[],
+  config: FinancialEngineConfig,
+  filters?: { projectId?: string, clientId?: string, searchQuery?: string, status?: string }
+): Expense[] {
+  let filtered = expenses;
+
+  if (filters?.projectId) {
+    filtered = filtered.filter(e => e.projectId === filters.projectId);
+  }
+
+  // Note: clientId filter would require joining with projects, 
+  // we'll handle that in the Engine if needed or keep it simple for now.
+
+  if (filters?.searchQuery) {
+    const q = filters.searchQuery.toLowerCase();
+    filtered = filtered.filter(e =>
+      e.title.toLowerCase().includes(q) ||
+      e.category?.toLowerCase().includes(q) ||
+      e.tags?.some(t => t.toLowerCase().includes(q))
+    );
+  }
+
+  if (filters?.status) {
+    filtered = filtered.filter(e => e.status === filters.status);
+  }
+
+  return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }

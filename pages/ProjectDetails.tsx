@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { Card, Button, Badge, CurrencyDisplay, Input, Avatar, ProgressBar, Select, SensitiveInput } from '../components/ui';
+import { Card, Button, Badge, CurrencyDisplay, Input, Avatar, ProgressBar, Select, SensitiveInput, RightPanel } from '../components/ui';
 import BillingModal from '../components/BillingModal';
 import { ProjectStatus, ProjectContractType, Payment, PaymentStatus, Client, Currency, CURRENCY_SYMBOLS } from '../types';
 import { ArrowLeft, Clock, Trash2, DollarSign, Edit2, User, Plus, CheckCircle2, Circle, FileText, Calendar, ShieldCheck, Settings, Send, Copy } from 'lucide-react';
-import { useProjectFinancials } from '../hooks/useFinancialEngine';
+import { useProjectFinancials, useProjectMarginModel } from '../hooks/useFinancialEngine';
 import { parseLocalDateToISO, parseNumber, toInputDate } from '../utils/format';
 
 const ProjectDetails: React.FC = () => {
@@ -15,15 +15,12 @@ const ProjectDetails: React.FC = () => {
 
     const project = projects.find(p => p.id === id);
     const projectFinancials = useProjectFinancials(id || '');
+    const projectMargin = useProjectMarginModel(id || '');
 
-    const [showEditProject, setShowEditProject] = useState(false);
+    const [activePanel, setActivePanel] = useState<'payment' | 'client' | 'installments' | 'receipt' | 'billing' | 'editProject' | null>(null);
     const [showChecklist, setShowChecklist] = useState(false);
-    const [showEditClient, setShowEditClient] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [showInstallmentModal, setShowInstallmentModal] = useState(false);
-    const [showReceiptModal, setShowReceiptModal] = useState(false);
+
     const [selectedReceiptPayment, setSelectedReceiptPayment] = useState<Payment | null>(null);
-    const [showBillingModal, setShowBillingModal] = useState(false);
 
     const [installmentCount, setInstallmentCount] = useState(2);
     const [installmentDate, setInstallmentDate] = useState(toInputDate(new Date().toISOString()));
@@ -79,7 +76,7 @@ const ProjectDetails: React.FC = () => {
             addPayment(project.id, { id: Date.now().toString(), date: dateStr, amount: amount, note: isAdjustment ? `(Extra) ${paymentNote || adjustmentDesc}` : paymentNote, status: PaymentStatus.PAID, invoiceNumber: paymentInvoice });
             if (project.contractType === ProjectContractType.ONE_OFF && (totals.paid + amount) >= totals.net && project.status === ProjectStatus.COMPLETED) updateProject(project.id, { status: ProjectStatus.PAID, paymentDate: dateStr });
         }
-        setShowPaymentModal(false);
+        setActivePanel(null);
         resetPaymentForm();
     };
 
@@ -97,7 +94,7 @@ const ProjectDetails: React.FC = () => {
             resetPaymentForm();
             if (totals.remaining > 0) setPaymentAmount(totals.remaining.toFixed(2));
         }
-        setShowPaymentModal(true);
+        setActivePanel('payment');
     };
 
     const openEditClientModal = () => {
@@ -111,7 +108,7 @@ const ProjectDetails: React.FC = () => {
                 email: client.email || '',
                 phone: client.phone || ''
             });
-            setShowEditClient(true);
+            setActivePanel('client');
         }
     };
 
@@ -136,7 +133,7 @@ const ProjectDetails: React.FC = () => {
             updateClient(updatedClient.id, updatedClient);
             if (updatedClient.name !== project.clientName) updateProject(project.id, { clientName: updatedClient.name });
         }
-        setShowEditClient(false);
+        setActivePanel(null);
     };
 
     const handleDelete = () => { if (window.confirm("Deletar este projeto?")) { deleteProject(project.id); navigate('/projects', { replace: true }); } };
@@ -162,7 +159,7 @@ const ProjectDetails: React.FC = () => {
                 status: (isFirst && payFirstNow) ? PaymentStatus.PAID : PaymentStatus.SCHEDULED
             });
         }
-        setShowInstallmentModal(false);
+        setActivePanel(null);
     };
 
     const paymentsList = [...(project.payments || [])].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -250,7 +247,7 @@ const ProjectDetails: React.FC = () => {
             {/* Billing Banner */}
             {totals.remaining > 0 && (
                 <button
-                    onClick={() => setShowBillingModal(true)}
+                    onClick={() => setActivePanel('billing')}
                     className="w-full bg-gradient-to-r from-brand to-brand/80 hover:from-brand/90 hover:to-brand/70 rounded-2xl p-4 flex items-center justify-between gap-4 transition-all shadow-lg shadow-brand/20 hover:shadow-brand/30 active:scale-[0.99]"
                 >
                     <div className="flex items-center gap-3">
@@ -279,7 +276,7 @@ const ProjectDetails: React.FC = () => {
                         <Plus size={16} /> Pagamento
                     </Button>
                     {totals.remaining > 0 && (
-                        <Button variant="outline" onClick={() => setShowInstallmentModal(true)} className="h-10 border-white/10">
+                        <Button variant="outline" onClick={() => setActivePanel('installments')} className="h-10 border-white/10">
                             Parcelar
                         </Button>
                     )}
@@ -317,7 +314,7 @@ const ProjectDetails: React.FC = () => {
                                                 Confirmar
                                             </Button>
                                         ) : (
-                                            <button onClick={() => { setSelectedReceiptPayment(pay); setShowReceiptModal(true); }} className="px-3 py-1.5 rounded-lg bg-black border border-white/10 text-ink-gray hover:text-white hover:border-brand text-xs font-bold uppercase flex items-center gap-1">
+                                            <button onClick={() => { setSelectedReceiptPayment(pay); setActivePanel('receipt'); }} className="px-3 py-1.5 rounded-lg bg-black border border-white/10 text-ink-gray hover:text-white hover:border-brand text-xs font-bold uppercase flex items-center gap-1">
                                                 <FileText size={12} /> Recibo
                                             </button>
                                         )}
@@ -352,6 +349,47 @@ const ProjectDetails: React.FC = () => {
                             <div className="border-t border-white/10 pt-3 flex justify-between text-white font-bold text-base">
                                 <span>Lucro Real</span>
                                 <span className="text-brand"><CurrencyDisplay amount={totals.profit} currency={project.currency} /></span>
+                            </div>
+                        </div>
+                    </Card>
+                )}
+
+                {/* Margin Analysis (Stage 8) */}
+                {projectMargin && projectMargin.expenseTotal > 0 && (
+                    <Card className="border-brand/20 bg-brand/5">
+                        <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <ShieldCheck size={16} className="text-brand" />
+                            Análise de Margem
+                        </h3>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                                    <p className="text-[10px] font-black text-ink-dim uppercase">Custos Diretos</p>
+                                    <p className="text-lg font-bold text-semantic-red">
+                                        <CurrencyDisplay amount={projectMargin.expenseTotal} currency={project.currency} />
+                                    </p>
+                                </div>
+                                <div className="p-3 bg-brand/10 rounded-xl border border-brand/20">
+                                    <p className="text-[10px] font-black text-brand uppercase">Margem Líquida</p>
+                                    <p className="text-lg font-bold text-white">
+                                        {projectMargin.marginPercent.toFixed(1)}%
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <p className="text-[10px] font-black text-ink-dim uppercase px-1">Detalhamento de Custos</p>
+                                {projectMargin.linkedExpenses.map(exp => (
+                                    <div key={exp.id} className="flex justify-between items-center p-2 hover:bg-white/5 rounded-lg transition-colors group">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-semantic-red/50" />
+                                            <span className="text-xs text-white line-clamp-1">{exp.title}</span>
+                                        </div>
+                                        <span className="text-xs font-bold text-ink-gray group-hover:text-white transition-colors">
+                                            <CurrencyDisplay amount={exp.amount} currency={exp.currency} />
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </Card>
@@ -420,7 +458,7 @@ const ProjectDetails: React.FC = () => {
 
                 {/* Actions Row */}
                 <div className="flex flex-wrap gap-3">
-                    <Button variant="secondary" className="h-10" onClick={() => setShowEditProject(true)}>
+                    <Button variant="secondary" className="h-10" onClick={() => setActivePanel('editProject')}>
                         <Edit2 size={16} /> Editar Projeto
                     </Button>
                     <Button variant="danger" className="h-10" onClick={handleDelete}>
@@ -429,241 +467,209 @@ const ProjectDetails: React.FC = () => {
                 </div>
             </div>
 
-            {/* Payment Modal */}
-            {showPaymentModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-md border border-white/10 shadow-2xl transition-all animate-in zoom-in-95 duration-200">
-                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight flex items-center gap-2">
-                            <DollarSign size={24} className="text-brand" />
-                            {editingPaymentId ? 'Editar Pagamento' : 'Novo Pagamento'}
-                        </h3>
-                        <form onSubmit={handlePaymentSubmit} className="space-y-4">
-                            <Input label="Valor" type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} required autoFocus placeholder="0.00" />
-                            <Input label="Data" type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} required />
-                            <Input label="Descrição / Nota" value={paymentNote} onChange={e => setPaymentNote(e.target.value)} placeholder="Ex: Entrada parcial" />
-                            <Input label="Nº Nota Fiscal (Opcional)" value={paymentInvoice} onChange={e => setPaymentInvoice(e.target.value)} placeholder="0001" />
+            {/* Payment Panel */}
+            <RightPanel isOpen={activePanel === 'payment'} onClose={() => setActivePanel(null)} title={editingPaymentId ? 'Editar Pagamento' : 'Novo Pagamento'}>
+                <form onSubmit={handlePaymentSubmit} className="space-y-4">
+                    <Input label="Valor" type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} required autoFocus placeholder="0.00" />
+                    <Input label="Data" type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} required />
+                    <Input label="Descrição / Nota" value={paymentNote} onChange={e => setPaymentNote(e.target.value)} placeholder="Ex: Entrada parcial" />
+                    <Input label="Nº Nota Fiscal (Opcional)" value={paymentInvoice} onChange={e => setPaymentInvoice(e.target.value)} placeholder="0001" />
 
-                            {!editingPaymentId && (
-                                <label className="flex items-center gap-3 p-4 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-colors border border-white/5">
-                                    <input
-                                        type="checkbox"
-                                        checked={isAdjustment}
-                                        onChange={e => setIsAdjustment(e.target.checked)}
-                                        className="w-5 h-5 rounded bg-white/10 border-white/20 accent-brand"
-                                    />
-                                    <div>
-                                        <span className="text-sm text-white font-medium">É um ajuste (extra)</span>
-                                        <p className="text-xs text-ink-gray">Aumenta o orçamento total do projeto</p>
-                                    </div>
-                                </label>
-                            )}
-
-                            {isAdjustment && (
-                                <Input
-                                    label="Motivo do Ajuste"
-                                    value={adjustmentDesc}
-                                    onChange={e => setAdjustmentDesc(e.target.value)}
-                                    placeholder="Ex: Alterações de escopo, urgência..."
-                                />
-                            )}
-
-                            <div className="pt-4 space-y-2">
-                                <Button type="submit" className="w-full h-12 font-bold">Salvar</Button>
-                                <Button type="button" variant="ghost" className="w-full h-12" onClick={() => setShowPaymentModal(false)}>Cancelar</Button>
+                    {!editingPaymentId && (
+                        <label className="flex items-center gap-3 p-4 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-colors border border-white/5">
+                            <input
+                                type="checkbox"
+                                checked={isAdjustment}
+                                onChange={e => setIsAdjustment(e.target.checked)}
+                                className="w-5 h-5 rounded bg-white/10 border-white/20 accent-brand"
+                            />
+                            <div>
+                                <span className="text-sm text-white font-medium">É um ajuste (extra)</span>
+                                <p className="text-xs text-ink-gray">Aumenta o orçamento total do projeto</p>
                             </div>
-                        </form>
+                        </label>
+                    )}
+
+                    {isAdjustment && (
+                        <Input
+                            label="Motivo do Ajuste"
+                            value={adjustmentDesc}
+                            onChange={e => setAdjustmentDesc(e.target.value)}
+                            placeholder="Ex: Alterações de escopo, urgência..."
+                        />
+                    )}
+
+                    <div className="pt-4 space-y-2 mt-auto">
+                        <Button type="submit" className="w-full h-12 font-bold">Salvar</Button>
+                        <Button type="button" variant="ghost" className="w-full h-12" onClick={() => setActivePanel(null)}>Cancelar</Button>
+                    </div>
+                </form>
+            </RightPanel>
+
+            {/* Edit Client Panel */}
+            <RightPanel isOpen={activePanel === 'client'} onClose={() => setActivePanel(null)} title="Informações do Cliente">
+                <form onSubmit={handleSaveClient} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input
+                            label="Nome do Contato *"
+                            value={clientForm.name || ''}
+                            onChange={e => setClientForm({ ...clientForm, name: e.target.value })}
+                            required
+                        />
+                        <Input
+                            label="Nome da Empresa (Opcional)"
+                            value={clientForm.companyName || ''}
+                            onChange={e => setClientForm({ ...clientForm, companyName: e.target.value })}
+                        />
+                    </div>
+
+                    <SensitiveInput
+                        label="CPF / CNPJ (Privado)"
+                        value={clientForm.taxId || ''}
+                        onChange={e => setClientForm({ ...clientForm, taxId: e.target.value })}
+                        placeholder="000.000.000-00"
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input
+                            label="E-mail"
+                            type="email"
+                            value={clientForm.email || ''}
+                            onChange={e => setClientForm({ ...clientForm, email: e.target.value })}
+                            placeholder="email@exemplo.com"
+                        />
+                        <Input
+                            label="Telefone"
+                            value={clientForm.phone || ''}
+                            onChange={e => setClientForm({ ...clientForm, phone: e.target.value })}
+                            placeholder="(00) 00000-0000"
+                        />
+                    </div>
+
+                    <Input
+                        label="E-mail de Cobrança (Opcional)"
+                        type="email"
+                        value={clientForm.billingEmail || ''}
+                        onChange={e => setClientForm({ ...clientForm, billingEmail: e.target.value })}
+                        placeholder="financeiro@exemplo.com"
+                    />
+
+                    <div className="pt-4 space-y-2">
+                        <Button type="submit" className="w-full h-12 font-bold">Salvar Alterações</Button>
+                        <Button type="button" variant="ghost" className="w-full h-12" onClick={() => setActivePanel(null)}>Cancelar</Button>
+                    </div>
+                </form>
+            </RightPanel>
+
+            {/* Edit Project Panel */}
+            <RightPanel isOpen={activePanel === 'editProject'} onClose={() => setActivePanel(null)} title="Editar Projeto">
+                <div className="space-y-4">
+                    <Input label="Categoria / Nome" value={project.clientName} onChange={e => updateProject(project.id, { clientName: e.target.value })} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input label="Valor" type="number" value={project.rate} onChange={e => updateProject(project.id, { rate: parseFloat(e.target.value) || 0 })} />
+                        <Select label="Moeda" value={project.currency} onChange={e => updateProject(project.id, { currency: e.target.value as Currency })}>
+                            {Object.values(Currency).map(c => <option className="bg-black" key={c} value={c}>{c}</option>)}
+                        </Select>
+                    </div>
+                    <Select label="Status" value={project.status} onChange={e => updateProject(project.id, { status: e.target.value as ProjectStatus })}>
+                        {Object.values(ProjectStatus).map(s => <option className="bg-black" key={s} value={s}>{s}</option>)}
+                    </Select>
+                    <div className="pt-4 space-y-2">
+                        <Button className="w-full h-12 font-bold" onClick={() => setActivePanel(null)}>Salvar Projeto</Button>
+                        <Button variant="ghost" className="w-full h-12" onClick={() => setActivePanel(null)}>Fechar</Button>
                     </div>
                 </div>
-            )}
+            </RightPanel>
 
-            {/* Edit Client Modal */}
-            {showEditClient && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-lg border border-white/10 shadow-2xl relative animate-in zoom-in-95 duration-200">
-                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight flex items-center gap-2">
-                            <User size={24} className="text-brand" />
-                            Informações do Cliente
-                        </h3>
-                        <form onSubmit={handleSaveClient} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input
-                                    label="Nome do Contato *"
-                                    value={clientForm.name || ''}
-                                    onChange={e => setClientForm({ ...clientForm, name: e.target.value })}
-                                    required
-                                />
-                                <Input
-                                    label="Nome da Empresa (Opcional)"
-                                    value={clientForm.companyName || ''}
-                                    onChange={e => setClientForm({ ...clientForm, companyName: e.target.value })}
-                                />
-                            </div>
-
-                            <SensitiveInput
-                                label="CPF / CNPJ (Privado)"
-                                value={clientForm.taxId || ''}
-                                onChange={e => setClientForm({ ...clientForm, taxId: e.target.value })}
-                                placeholder="000.000.000-00"
-                            />
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input
-                                    label="E-mail"
-                                    type="email"
-                                    value={clientForm.email || ''}
-                                    onChange={e => setClientForm({ ...clientForm, email: e.target.value })}
-                                    placeholder="email@exemplo.com"
-                                />
-                                <Input
-                                    label="Telefone"
-                                    value={clientForm.phone || ''}
-                                    onChange={e => setClientForm({ ...clientForm, phone: e.target.value })}
-                                    placeholder="(00) 00000-0000"
-                                />
-                            </div>
-
-                            <Input
-                                label="E-mail de Cobrança (Opcional)"
-                                type="email"
-                                value={clientForm.billingEmail || ''}
-                                onChange={e => setClientForm({ ...clientForm, billingEmail: e.target.value })}
-                                placeholder="financeiro@exemplo.com"
-                            />
-
-                            <div className="pt-4 space-y-2">
-                                <Button type="submit" className="w-full h-12 font-bold">Salvar Alterações</Button>
-                                <Button type="button" variant="ghost" className="w-full h-12" onClick={() => setShowEditClient(false)}>Cancelar</Button>
-                            </div>
-                        </form>
+            {/* Installment Panel */}
+            <RightPanel isOpen={activePanel === 'installments'} onClose={() => setActivePanel(null)} title="Parcelar Pagamento">
+                <form onSubmit={handleGenerateInstallments} className="space-y-4">
+                    <div className="p-4 bg-white/5 rounded-xl mb-4 border border-white/5">
+                        <p className="text-sm text-ink-gray">Valor restante a parcelar:</p>
+                        <p className="text-2xl font-bold text-white"><CurrencyDisplay amount={totals.remaining} currency={project.currency} /></p>
                     </div>
-                </div>
-            )}
+                    <Input
+                        label="Número de Parcelas"
+                        type="number"
+                        min="2"
+                        max="24"
+                        value={installmentCount}
+                        onChange={e => setInstallmentCount(parseInt(e.target.value) || 2)}
+                        required
+                    />
+                    <Input
+                        label="Data da Primeira Parcela"
+                        type="date"
+                        value={installmentDate}
+                        onChange={e => setInstallmentDate(e.target.value)}
+                        required
+                    />
+                    <label className="flex items-center gap-3 p-4 bg-white/5 rounded-xl cursor-pointer border border-white/5 hover:bg-white/10 transition-colors">
+                        <input
+                            type="checkbox"
+                            checked={payFirstNow}
+                            onChange={e => setPayFirstNow(e.target.checked)}
+                            className="w-5 h-5 rounded bg-white/10 border-white/20 accent-brand"
+                        />
+                        <span className="text-sm text-white font-medium">Marcar primeira parcela como paga</span>
+                    </label>
+                    <div className="p-4 bg-brand/10 rounded-xl border border-brand/20">
+                        <p className="text-sm text-brand font-bold">
+                            {installmentCount}x de <CurrencyDisplay amount={totals.remaining / installmentCount} currency={project.currency} />
+                        </p>
+                    </div>
+                    <div className="pt-4 space-y-2">
+                        <Button type="submit" className="w-full h-12 font-bold">Gerar Parcelas</Button>
+                        <Button type="button" variant="ghost" className="w-full h-12" onClick={() => setActivePanel(null)}>Cancelar</Button>
+                    </div>
+                </form>
+            </RightPanel>
 
-            {/* Edit Project Modal */}
-            {showEditProject && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-lg border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
-                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight flex items-center gap-2">
-                            <Settings size={24} className="text-brand" />
-                            Editar Projeto
-                        </h3>
-                        <div className="space-y-4">
-                            <Input label="Categoria / Nome" value={project.clientName} onChange={e => updateProject(project.id, { clientName: e.target.value })} />
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input label="Valor" type="number" value={project.rate} onChange={e => updateProject(project.id, { rate: parseFloat(e.target.value) || 0 })} />
-                                <Select label="Moeda" value={project.currency} onChange={e => updateProject(project.id, { currency: e.target.value as Currency })}>
-                                    {Object.values(Currency).map(c => <option className="bg-black" key={c} value={c}>{c}</option>)}
-                                </Select>
+            {/* Receipt Panel */}
+            <RightPanel isOpen={activePanel === 'receipt'} onClose={() => setActivePanel(null)} title="Recibo de Pagamento">
+                {selectedReceiptPayment && (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-white/5 rounded-xl space-y-3 border border-white/5">
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Cliente</span>
+                                <span className="text-white font-bold">{project.clientName}</span>
                             </div>
-                            <Select label="Status" value={project.status} onChange={e => updateProject(project.id, { status: e.target.value as ProjectStatus })}>
-                                {Object.values(ProjectStatus).map(s => <option className="bg-black" key={s} value={s}>{s}</option>)}
-                            </Select>
-                            <div className="pt-4 space-y-2">
-                                <Button className="w-full h-12 font-bold" onClick={() => setShowEditProject(false)}>Salvar Projeto</Button>
-                                <Button variant="ghost" className="w-full h-12" onClick={() => setShowEditProject(false)}>Fechar</Button>
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Projeto</span>
+                                <span className="text-white font-medium">{project.category}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Data</span>
+                                <span className="text-white font-medium">{new Date(selectedReceiptPayment.date).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Descrição</span>
+                                <span className="text-white font-medium">{selectedReceiptPayment.note || 'Pagamento'}</span>
+                            </div>
+                            {selectedReceiptPayment.invoiceNumber && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Nota Fiscal</span>
+                                    <span className="text-white font-medium">{selectedReceiptPayment.invoiceNumber}</span>
+                                </div>
+                            )}
+                            <div className="border-t border-white/10 pt-3 flex justify-between items-center">
+                                <span className="text-sm text-ink-gray font-bold uppercase">Valor Pago</span>
+                                <span className="text-brand text-2xl font-black font-mono"><CurrencyDisplay amount={selectedReceiptPayment.amount} currency={project.currency} /></span>
                             </div>
                         </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Installment Modal */}
-            {showInstallmentModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-md border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
-                        <h3 className="text-xl font-bold text-white mb-6">Parcelar Pagamento</h3>
-                        <form onSubmit={handleGenerateInstallments} className="space-y-4">
-                            <div className="p-4 bg-white/5 rounded-xl mb-4 border border-white/5">
-                                <p className="text-sm text-ink-gray">Valor restante a parcelar:</p>
-                                <p className="text-2xl font-bold text-white"><CurrencyDisplay amount={totals.remaining} currency={project.currency} /></p>
-                            </div>
-                            <Input
-                                label="Número de Parcelas"
-                                type="number"
-                                min="2"
-                                max="24"
-                                value={installmentCount}
-                                onChange={e => setInstallmentCount(parseInt(e.target.value) || 2)}
-                                required
-                            />
-                            <Input
-                                label="Data da Primeira Parcela"
-                                type="date"
-                                value={installmentDate}
-                                onChange={e => setInstallmentDate(e.target.value)}
-                                required
-                            />
-                            <label className="flex items-center gap-3 p-4 bg-white/5 rounded-xl cursor-pointer border border-white/5 hover:bg-white/10 transition-colors">
-                                <input
-                                    type="checkbox"
-                                    checked={payFirstNow}
-                                    onChange={e => setPayFirstNow(e.target.checked)}
-                                    className="w-5 h-5 rounded bg-white/10 border-white/20 accent-brand"
-                                />
-                                <span className="text-sm text-white font-medium">Marcar primeira parcela como paga</span>
-                            </label>
-                            <div className="p-4 bg-brand/10 rounded-xl border border-brand/20">
-                                <p className="text-sm text-brand font-bold">
-                                    {installmentCount}x de <CurrencyDisplay amount={totals.remaining / installmentCount} currency={project.currency} />
-                                </p>
-                            </div>
-                            <div className="pt-4 space-y-2">
-                                <Button type="submit" className="w-full h-12 font-bold">Gerar Parcelas</Button>
-                                <Button type="button" variant="ghost" className="w-full h-12" onClick={() => setShowInstallmentModal(false)}>Cancelar</Button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Receipt Modal */}
-            {showReceiptModal && selectedReceiptPayment && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                    <div className="bg-base-card rounded-3xl p-6 w-full max-w-md border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
-                        <h3 className="text-xl font-bold text-white mb-6">Recibo de Pagamento</h3>
-                        <div className="space-y-4">
-                            <div className="p-4 bg-white/5 rounded-xl space-y-3 border border-white/5">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Cliente</span>
-                                    <span className="text-white font-bold">{project.clientName}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Projeto</span>
-                                    <span className="text-white font-medium">{project.category}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Data</span>
-                                    <span className="text-white font-medium">{new Date(selectedReceiptPayment.date).toLocaleDateString()}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Descrição</span>
-                                    <span className="text-white font-medium">{selectedReceiptPayment.note || 'Pagamento'}</span>
-                                </div>
-                                {selectedReceiptPayment.invoiceNumber && (
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xs text-ink-gray uppercase font-bold tracking-wider">Nota Fiscal</span>
-                                        <span className="text-white font-medium">{selectedReceiptPayment.invoiceNumber}</span>
-                                    </div>
-                                )}
-                                <div className="border-t border-white/10 pt-3 flex justify-between items-center">
-                                    <span className="text-sm text-ink-gray font-bold uppercase">Valor Pago</span>
-                                    <span className="text-brand text-2xl font-black font-mono"><CurrencyDisplay amount={selectedReceiptPayment.amount} currency={project.currency} /></span>
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-1 text-[10px] text-ink-dim uppercase font-bold tracking-tighter">
-                                <span>Emitido por: {userProfile.name}</span>
-                                {userProfile.pixKey && <span>PIX: {userProfile.pixKey}</span>}
-                            </div>
-                            <Button className="w-full h-12 font-bold" onClick={() => setShowReceiptModal(false)}>Fechar Recibo</Button>
+                        <div className="flex flex-col gap-1 text-[10px] text-ink-dim uppercase font-bold tracking-tighter">
+                            <span>Emitido por: {userProfile.name}</span>
+                            {userProfile.pixKey && <span>PIX: {userProfile.pixKey}</span>}
                         </div>
+                        <Button className="w-full h-12 font-bold" onClick={() => setActivePanel(null)}>Fechar Recibo</Button>
                     </div>
-                </div>
-            )}
+                )}
+            </RightPanel>
 
-            {/* Billing Modal */}
+            {/* Billing Modal is kept as Modal as it behaves differently (interactive invoice view) */}
             <BillingModal
-                isOpen={showBillingModal}
-                onClose={() => setShowBillingModal(false)}
+                isOpen={activePanel === 'billing'}
+                onClose={() => setActivePanel(null)}
                 clientName={project.clientName}
                 projectCategory={project.category}
                 currency={project.currency}

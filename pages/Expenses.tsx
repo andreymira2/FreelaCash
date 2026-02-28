@@ -4,10 +4,11 @@ import { useData } from '../context/DataContext';
 import { Card, Button, Input, Select, CurrencyDisplay, Toggle, DateRangeSelect, EmptyState, PageHeader } from '../components/ui';
 import { Currency, EXPENSE_CATEGORIES, SERVICE_PRESETS, CATEGORY_ICONS, ServicePreset, Expense } from '../types';
 import { safeFloat, parseLocalDate, toInputDate } from '../utils/format';
-import { Plus, Trash2, Wallet, X, HelpCircle, CheckCircle2, Clock, AlertTriangle, Zap, Receipt, Store, Search, ArrowLeft, ChevronDown, Calendar, DollarSign, Repeat } from 'lucide-react';
+import { Plus, Trash2, Wallet, X, HelpCircle, CheckCircle2, Clock, AlertTriangle, Zap, Receipt, Store, Search, ArrowLeft, ChevronDown, Calendar, DollarSign, Repeat, Copy } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRecurringExpenseProgress, useRecurringExpenseTotal, useCurrencyConverter } from '../hooks/useFinancialEngine';
+import { useDebounce } from '../hooks/useDebounce';
 import { QuickExpenseGrid, CompanyLogo } from '../components/QuickExpenseGrid';
 
 const IconMapper: React.FC<{ name: string; size?: number; className?: string }> = ({ name, size = 16, className = '' }) => {
@@ -18,7 +19,7 @@ const IconMapper: React.FC<{ name: string; size?: number; className?: string }> 
 
 const ExpenseLogo: React.FC<{ logoUrl: string; title: string; isTrialActive?: boolean }> = ({ logoUrl, title, isTrialActive }) => {
     const [hasError, setHasError] = useState(false);
-    
+
     if (hasError) {
         return (
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br from-brand/20 to-brand/5 text-brand font-black border border-brand/20 ${isTrialActive ? 'ring-2 ring-semantic-yellow' : ''}`}>
@@ -26,12 +27,12 @@ const ExpenseLogo: React.FC<{ logoUrl: string; title: string; isTrialActive?: bo
             </div>
         );
     }
-    
+
     return (
         <div className={`w-12 h-12 rounded-xl overflow-hidden shrink-0 ${isTrialActive ? 'ring-2 ring-semantic-yellow' : ''}`}>
-            <img 
-                src={logoUrl} 
-                alt={title} 
+            <img
+                src={logoUrl}
+                alt={title}
                 className="w-full h-full object-contain bg-white"
                 onError={() => setHasError(true)}
             />
@@ -46,35 +47,39 @@ interface ExpenseFormState {
     dueDay?: string;
     isTrial: boolean;
     trialEndDate: string;
+    projectId?: string;
 }
 
 const Expenses: React.FC = () => {
-    const { expenses, addExpense, deleteExpense, toggleExpensePayment, bulkMarkExpenseAsPaid, settings, convertCurrency, dateRange, setDateRange, getDateRangeFilter } = useData();
-    
+    const { expenses, addExpense, deleteExpense, bulkDeleteExpenses, toggleExpensePayment, bulkMarkExpenseAsPaid, bulkMarkMultipleExpensesAsPaid, saveExpenseAsPreset, settings, convertCurrency, dateRange, setDateRange, getDateRangeFilter, projects } = useData();
+
     const recurringProgress = useRecurringExpenseProgress();
     const monthlyBurnRate = useRecurringExpenseTotal();
     const navigate = useNavigate();
     const [showForm, setShowForm] = useState(false);
     const [formError, setFormError] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearch = useDebounce(searchTerm, 300);
     const [formStep, setFormStep] = useState<'pick' | 'details'>('pick');
     const [selectedPreset, setSelectedPreset] = useState<ServicePreset | null>(null);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [visibleCount, setVisibleCount] = useState(10);
 
     const defaultForm: ExpenseFormState = {
         title: '', amount: '', currency: settings.mainCurrency, category: EXPENSE_CATEGORIES[1], date: toInputDate(new Date().toISOString()), tags: [], isWorkRelated: true, isRecurring: false, recurringFrequency: 'MONTHLY', status: 'PAID', dueDay: '',
-        isTrial: false, trialEndDate: ''
+        isTrial: false, trialEndDate: '', projectId: undefined
     };
     const [formData, setFormData] = useState<ExpenseFormState>(defaultForm);
 
     const handleQuickPick = (preset: ServicePreset) => {
         setSelectedPreset(preset);
-        setFormData({ 
-            ...defaultForm, 
-            title: preset.name || '', 
-            category: preset.defaultCategory, 
-            tags: preset.defaultTags, 
-            isRecurring: preset.isRecurring, 
+        setFormData({
+            ...defaultForm,
+            title: preset.name || '',
+            category: preset.defaultCategory,
+            tags: preset.defaultTags,
+            isRecurring: preset.isRecurring,
             amount: preset.defaultAmount?.toString() || '',
             currency: preset.defaultCurrency || settings.mainCurrency,
         });
@@ -106,8 +111,40 @@ const Expenses: React.FC = () => {
         e.stopPropagation();
         if (window.confirm('Tem certeza que deseja excluir esta despesa permanentemente?')) {
             deleteExpense(id);
+            setSelectedIds(prev => prev.filter(selectedId => selectedId !== id));
         }
     }
+
+    const handleBulkDelete = () => {
+        if (selectedIds.length === 0) return;
+        if (window.confirm(`Excluir as ${selectedIds.length} despesas selecionadas? (Será possível desfazer)`)) {
+            bulkDeleteExpenses(selectedIds);
+            setSelectedIds([]);
+        }
+    };
+
+    const handleDuplicate = (e: React.MouseEvent, exp: Expense) => {
+        e.stopPropagation();
+        const { id, paymentHistory, ...rest } = exp;
+        addExpense({
+            id: Date.now().toString(),
+            ...rest,
+            title: `${rest.title} (Cópia)`,
+            date: new Date().toISOString()
+        });
+    };
+
+    const handleSavePreset = (e: React.MouseEvent, expId: string) => {
+        e.stopPropagation();
+        saveExpenseAsPreset(expId);
+    };
+
+    const toggleSelect = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -133,16 +170,17 @@ const Expenses: React.FC = () => {
         if (formData.isTrial && !formData.trialEndDate) { setFormError('Informe a data de fim do trial.'); return; }
 
         const logoUrl = selectedPreset?.domain ? `https://img.logo.dev/${selectedPreset.domain}?token=pk_X-1ZO13GSgeOoUrIuJ6GMQ` : undefined;
-        
+
         const payload = {
             title: formData.title, amount: amountVal, currency: formData.currency, category: formData.category, date: parseLocalDate(formData.date).toISOString(), tags: formData.tags,
             isWorkRelated: formData.isWorkRelated, isRecurring: formData.isRecurring, recurringFrequency: formData.isRecurring ? formData.recurringFrequency : undefined,
             status: formData.status, dueDay: dueDayVal, isTrial: formData.isTrial, trialEndDate: formData.isTrial ? parseLocalDate(formData.trialEndDate).toISOString() : undefined,
-            logoUrl
+            logoUrl,
+            projectId: formData.projectId
         };
 
         addExpense({ id: Date.now().toString(), ...payload });
-        setFormData(defaultForm); 
+        setFormData(defaultForm);
         setShowForm(false);
         setFormStep('pick');
         setSelectedPreset(null);
@@ -150,8 +188,8 @@ const Expenses: React.FC = () => {
 
     const { recurringExpenses, variableExpenses } = useMemo(() => {
         let filtered = expenses;
-        if (searchTerm) {
-            const lower = searchTerm.toLowerCase();
+        if (debouncedSearch) {
+            const lower = debouncedSearch.toLowerCase();
             filtered = expenses.filter(e => e.title.toLowerCase().includes(lower) || e.category?.toLowerCase().includes(lower));
         }
 
@@ -159,7 +197,7 @@ const Expenses: React.FC = () => {
         const variable = filtered.filter(e => !e.isRecurring);
 
         return { recurringExpenses: recurring, variableExpenses: variable };
-    }, [expenses, searchTerm]);
+    }, [expenses, debouncedSearch]);
 
     const variableFiltered = useMemo(() => {
         const range = getDateRangeFilter();
@@ -323,9 +361,10 @@ const Expenses: React.FC = () => {
                                         const range = getDateRangeFilter();
                                         const monthStr = `${range.start.getFullYear()}-${(range.start.getMonth() + 1).toString().padStart(2, '0')}`;
                                         if (window.confirm(`Marcar todas as ${recurringStats.pending} despesas pendentes como pagas para ${range.start.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}?`)) {
-                                            recurringExpenses.forEach(exp => {
-                                                bulkMarkExpenseAsPaid(exp.id, [monthStr]);
-                                            });
+                                            const pendingIds = recurringExpenses
+                                                .filter(exp => getRecurringStatus(exp) === 'PENDING')
+                                                .map(exp => exp.id);
+                                            bulkMarkMultipleExpensesAsPaid(pendingIds, [monthStr]);
                                         }
                                     }}
                                     className="text-xs font-bold bg-brand/10 text-brand hover:bg-brand/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
@@ -351,9 +390,9 @@ const Expenses: React.FC = () => {
                                 <span className="text-sm font-bold text-white">{Math.round(recurringStats.percent)}%</span>
                             </div>
                             <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                                <div 
-                                    className="h-full bg-brand transition-all duration-500" 
-                                    style={{ width: `${recurringStats.percent}%` }} 
+                                <div
+                                    className="h-full bg-brand transition-all duration-500"
+                                    style={{ width: `${recurringStats.percent}%` }}
                                 />
                             </div>
                         </div>
@@ -386,10 +425,10 @@ const Expenses: React.FC = () => {
                                                         <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-center">
                                                             <div className="flex items-center gap-4">
                                                                 {exp.logoUrl ? (
-                                                                    <ExpenseLogo 
-                                                                        logoUrl={exp.logoUrl} 
-                                                                        title={exp.title} 
-                                                                        isTrialActive={isTrialActive} 
+                                                                    <ExpenseLogo
+                                                                        logoUrl={exp.logoUrl}
+                                                                        title={exp.title}
+                                                                        isTrialActive={isTrialActive}
                                                                     />
                                                                 ) : (
                                                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isTrialActive ? (daysLeft <= 3 ? 'bg-semantic-red animate-pulse' : 'bg-semantic-yellow') + ' text-black' : 'bg-white/5 text-ink-gray group-hover:text-white transition-colors'}`}>
@@ -425,9 +464,9 @@ const Expenses: React.FC = () => {
                                                                         className={`h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all ${isPaid ? 'bg-brand/10 text-brand hover:bg-brand/20' : 'bg-semantic-yellow/10 text-semantic-yellow hover:bg-semantic-yellow/20'}`}
                                                                     >
                                                                         {isPaid ? (
-                                                                            <><CheckCircle2 size={14} /> <span className="hidden sm:inline">Pago</span></>
+                                                                            <><CheckCircle2 size={14} /> <span className="hidden sm:inline">Pago {getDateRangeFilter().start.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })}</span></>
                                                                         ) : (
-                                                                            <><Clock size={14} /> <span className="hidden sm:inline">Pagar</span></>
+                                                                            <><Clock size={14} /> <span className="hidden sm:inline">Pagar {getDateRangeFilter().start.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })}</span></>
                                                                         )}
                                                                     </button>
                                                                 )}
@@ -437,6 +476,13 @@ const Expenses: React.FC = () => {
                                                                     </div>
                                                                 )}
 
+                                                                <button
+                                                                    onClick={(e) => handleDuplicate(e, exp)}
+                                                                    className="w-9 h-9 rounded-xl flex items-center justify-center text-ink-dim hover:text-white hover:bg-white/10 transition-colors"
+                                                                    title="Duplicar"
+                                                                >
+                                                                    <Icons.Copy size={16} />
+                                                                </button>
                                                                 <button
                                                                     onClick={(e) => handleDeleteClick(e, exp.id)}
                                                                     className="w-9 h-9 rounded-xl flex items-center justify-center text-ink-dim hover:text-semantic-red hover:bg-semantic-red/10 transition-colors"
@@ -464,40 +510,75 @@ const Expenses: React.FC = () => {
                 {/* RIGHT: Recent Variable Feed */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-white uppercase text-xs tracking-wider flex items-center gap-2"><Receipt size={14} /> Gastos Variáveis</h3>
+                        <div className="flex items-center gap-3">
+                            <h3 className="font-bold text-white uppercase text-xs tracking-wider flex items-center gap-2"><Receipt size={14} /> Gastos Variáveis</h3>
+                            {selectedIds.length > 0 && (
+                                <span className="bg-white/10 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{selectedIds.length} selecionados</span>
+                            )}
+                        </div>
+
+                        {selectedIds.length > 0 && (
+                            <button onClick={handleBulkDelete} className="text-xs font-bold text-semantic-red hover:text-white hover:bg-semantic-red px-2 py-1 rounded transition-colors flex items-center gap-1">
+                                <Trash2 size={12} /> Excluir Vários
+                            </button>
+                        )}
                     </div>
 
                     <div className="space-y-3">
                         {variableFiltered.length > 0 ? (
-                            variableFiltered.slice(0, 10).map(exp => {
-                                const isPaid = exp.status !== 'PENDING';
-                                return (
-                                    <div
-                                        key={exp.id}
-                                        onClick={() => handleCardClick(exp)}
-                                        className="flex items-center justify-between p-3 rounded-xl bg-base-card border border-white/5 hover:border-white/10 cursor-pointer group"
-                                    >
-                                        <div className="flex items-center gap-3 overflow-hidden">
-                                            <div className={`w-1.5 h-8 rounded-full ${!isPaid ? 'bg-semantic-red' : 'bg-white/10 group-hover:bg-brand'}`}></div>
-                                            <div className="truncate">
-                                                <p className="text-xs font-bold text-white truncate">{exp.title}</p>
-                                                <p className="text-xs md:text-[10px] text-ink-dim">{new Date(exp.date).toLocaleDateString()}</p>
+                            <>
+                                {variableFiltered.slice(0, visibleCount).map(exp => {
+                                    const isPaid = exp.status !== 'PENDING';
+                                    return (
+                                        <div
+                                            key={exp.id}
+                                            onClick={() => handleCardClick(exp)}
+                                            className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer group ${selectedIds.includes(exp.id) ? 'bg-white/10 border-brand/50 ring-1 ring-brand' : 'bg-base-card border-white/5 hover:border-white/10'}`}
+                                        >
+                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                <div onClick={(e) => toggleSelect(e, exp.id)} className="shrink-0 p-1 flex items-center justify-center cursor-pointer opacity-50 hover:opacity-100 transition-opacity">
+                                                    {selectedIds.includes(exp.id) ? <CheckCircle2 size={16} className="text-brand" /> : <div className="w-4 h-4 rounded-full border border-ink-gray" />}
+                                                </div>
+                                                <div className={`w-1.5 h-8 rounded-full shrink-0 ${!isPaid ? 'bg-semantic-red' : 'bg-white/10 group-hover:bg-brand'}`}></div>
+                                                <div className="truncate">
+                                                    <p className="text-xs font-bold text-white truncate">{exp.title}</p>
+                                                    <p className="text-xs md:text-[10px] text-ink-dim">{new Date(exp.date).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <p className="text-xs font-bold text-white whitespace-nowrap"><CurrencyDisplay amount={exp.amount} currency={exp.currency} /></p>
+
+                                                <div className="flex bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+                                                    <button
+                                                        onClick={(e) => handleSavePreset(e, exp.id)}
+                                                        className="p-1.5 text-ink-dim hover:text-semantic-blue hover:bg-semantic-blue/10 transition-colors border-x border-white/5"
+                                                        title="Salvar como Preset"
+                                                    >
+                                                        <Plus size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleDuplicate(e, exp)}
+                                                        className="p-1.5 text-ink-dim hover:text-white hover:bg-white/10 rounded-r-lg transition-colors"
+                                                        title="Duplicar"
+                                                    >
+                                                        <Copy size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
+                                    )
+                                })}
 
-                                        <div className="flex items-center gap-3">
-                                            <p className="text-xs font-bold text-white whitespace-nowrap"><CurrencyDisplay amount={exp.amount} currency={exp.currency} /></p>
-                                            <button
-                                                onClick={(e) => handleDeleteClick(e, exp.id)}
-                                                className="p-1.5 text-ink-dim hover:text-semantic-red hover:bg-semantic-red/10 rounded-lg transition-colors"
-                                                title="Excluir"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                )
-                            })
+                                {variableFiltered.length > visibleCount && (
+                                    <button
+                                        onClick={() => setVisibleCount(v => v + 10)}
+                                        className="w-full py-3 text-xs font-bold text-ink-gray hover:text-white bg-base-card border border-white/5 hover:border-white/10 rounded-xl transition-all"
+                                    >
+                                        Mostrar mais ({variableFiltered.length - visibleCount} restantes)
+                                    </button>
+                                )}
+                            </>
                         ) : (
                             <div className="text-center py-10 text-xs text-ink-dim bg-base-card rounded-xl border border-white/5 border-dashed">
                                 Nenhum gasto variável este mês.
@@ -514,8 +595,8 @@ const Expenses: React.FC = () => {
                         <div className="flex justify-between items-center p-6 border-b border-white/5">
                             <div className="flex items-center gap-4">
                                 {formStep === 'details' && (
-                                    <button 
-                                        onClick={() => { setFormStep('pick'); setShowAdvanced(false); }} 
+                                    <button
+                                        onClick={() => { setFormStep('pick'); setShowAdvanced(false); }}
                                         className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-ink-gray hover:text-white transition-all"
                                     >
                                         <ArrowLeft size={18} />
@@ -530,8 +611,8 @@ const Expenses: React.FC = () => {
                                     </p>
                                 </div>
                             </div>
-                            <button 
-                                onClick={handleCloseForm} 
+                            <button
+                                onClick={handleCloseForm}
                                 className="w-10 h-10 rounded-xl bg-white/5 hover:bg-semantic-red/20 flex items-center justify-center text-ink-gray hover:text-semantic-red transition-all"
                             >
                                 <X size={18} />
@@ -569,14 +650,14 @@ const Expenses: React.FC = () => {
 
                                     <form onSubmit={handleSubmit} className="space-y-5">
                                         <div className="space-y-4">
-                                            <Input 
-                                                label="Nome da despesa" 
-                                                value={formData.title} 
-                                                onChange={e => setFormData({ ...formData, title: e.target.value })} 
+                                            <Input
+                                                label="Nome da despesa"
+                                                value={formData.title}
+                                                onChange={e => setFormData({ ...formData, title: e.target.value })}
                                                 autoFocus={!selectedPreset?.domain}
                                                 className="text-lg"
                                             />
-                                            
+
                                             <div className="grid grid-cols-5 gap-3">
                                                 <div className="col-span-3">
                                                     <label className="block text-xs font-bold text-brand uppercase tracking-wider mb-2">
@@ -595,8 +676,8 @@ const Expenses: React.FC = () => {
                                                 </div>
                                                 <div className="col-span-2">
                                                     <label className="block text-xs font-bold text-ink-gray uppercase tracking-wider mb-2">Moeda</label>
-                                                    <select 
-                                                        value={formData.currency} 
+                                                    <select
+                                                        value={formData.currency}
                                                         onChange={e => setFormData({ ...formData, currency: e.target.value as Currency })}
                                                         className="w-full px-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-lg font-bold text-white focus:border-brand outline-none transition-all appearance-none cursor-pointer"
                                                     >
@@ -638,8 +719,8 @@ const Expenses: React.FC = () => {
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-ink-gray uppercase tracking-wider mb-2">Frequência</label>
-                                                    <select 
-                                                        value={formData.recurringFrequency} 
+                                                    <select
+                                                        value={formData.recurringFrequency}
                                                         onChange={e => setFormData({ ...formData, recurringFrequency: e.target.value as any })}
                                                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-base font-bold text-white focus:border-brand outline-none transition-all appearance-none cursor-pointer"
                                                     >
@@ -664,7 +745,7 @@ const Expenses: React.FC = () => {
                                                 <Select label="Categoria" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
                                                     {EXPENSE_CATEGORIES.map(cat => <option className="bg-base-bg" key={cat} value={cat}>{cat}</option>)}
                                                 </Select>
-                                                
+
                                                 <Input label="Data de referência" type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
 
                                                 {formData.isRecurring && (
@@ -678,11 +759,11 @@ const Expenses: React.FC = () => {
                                                         </div>
                                                         {formData.isTrial && (
                                                             <div className="mt-4 animate-in slide-in-from-top-2">
-                                                                <Input 
-                                                                    label="Fim do período grátis" 
-                                                                    type="date" 
-                                                                    value={formData.trialEndDate} 
-                                                                    onChange={e => setFormData({ ...formData, trialEndDate: e.target.value })} 
+                                                                <Input
+                                                                    label="Fim do período grátis"
+                                                                    type="date"
+                                                                    value={formData.trialEndDate}
+                                                                    onChange={e => setFormData({ ...formData, trialEndDate: e.target.value })}
                                                                 />
                                                             </div>
                                                         )}
@@ -695,6 +776,35 @@ const Expenses: React.FC = () => {
                                                         <option className="bg-base-bg" value="PENDING">Pendente</option>
                                                     </Select>
                                                 )}
+
+                                                <div className="pt-4 border-t border-white/5 space-y-4">
+                                                    <h5 className="text-[10px] font-black text-ink-dim uppercase tracking-widest">Configurações Avançadas</h5>
+
+                                                    {/* Project Linking */}
+                                                    {(projects.length >= 3 || showAdvanced) && (
+                                                        <Select
+                                                            label="Vincular a Projeto (Custo Direto)"
+                                                            value={formData.projectId || ''}
+                                                            onChange={e => setFormData({ ...formData, projectId: e.target.value || undefined })}
+                                                        >
+                                                            <option value="">Nenhum projeto (Geral)</option>
+                                                            {projects.map(p => (
+                                                                <option key={p.id} value={p.id}>
+                                                                    {p.clientName} - {p.category}
+                                                                </option>
+                                                            ))}
+                                                        </Select>
+                                                    )}
+
+                                                    {/* Save as Preset Toggle - Implementation would require adding customPresets to DataContext */}
+                                                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 opacity-60">
+                                                        <div>
+                                                            <span className="text-xs font-bold text-white">Salvar como Preset</span>
+                                                            <p className="text-[10px] text-ink-dim">Facilitar criações futuras</p>
+                                                        </div>
+                                                        <Toggle checked={false} onChange={() => { }} />
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
 

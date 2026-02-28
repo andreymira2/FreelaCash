@@ -1,15 +1,15 @@
 
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { Button, Input, Select, Card, Avatar, SensitiveInput } from '../components/ui';
-import { Currency, ProjectType, ProjectStatus, ProjectContractType, PaymentStatus, Client } from '../types';
+import { Currency, ProjectType, ProjectStatus, ProjectContractType, PaymentStatus, Client, Project } from '../types';
 import { ArrowLeft, AlertCircle, CheckCircle2, Zap, Calendar, Clock, Briefcase, DollarSign, Plus, User, ChevronRight, Check, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { parseLocalDateToISO, parseNumber, toInputDate } from '../utils/format';
 
 const ProjectForm: React.FC = () => {
     const navigate = useNavigate();
-    const { addProject, clients, addClient, getOrCreateClientByName } = useData();
+    const { addProject, clients, addClient, getOrCreateClientByName, contracts } = useData();
     const [error, setError] = useState<string>('');
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -22,19 +22,23 @@ const ProjectForm: React.FC = () => {
         return clients.filter(c => !c.isArchived && c.name.toLowerCase().includes(query));
     }, [clients, clientSearch]);
 
+    const location = useLocation();
+
+    const duplicateData = location.state?.duplicateFrom as Project | null;
+
     const [formData, setFormData] = useState({
-        clientName: '',
-        type: ProjectType.FIXED,
-        contractType: ProjectContractType.ONE_OFF,
-        category: '',
-        rate: '',
-        currency: Currency.BRL,
-        platformFee: '',
-        dueDate: '',
-        startDate: toInputDate(new Date().toISOString()),
+        clientName: duplicateData?.clientName || '',
+        type: duplicateData?.type || ProjectType.FIXED,
+        contractType: duplicateData?.contractType || ProjectContractType.ONE_OFF,
+        category: duplicateData?.category || '',
+        rate: duplicateData?.rate?.toString() || '',
+        currency: duplicateData?.currency || Currency.BRL,
+        platformFee: duplicateData?.platformFee?.toString() || '',
+        dueDate: duplicateData?.dueDate ? toInputDate(duplicateData.dueDate) : '',
+        startDate: duplicateData?.startDate ? toInputDate(duplicateData.startDate) : toInputDate(new Date().toISOString()),
         contractMonths: '6',
-        isOngoing: true,
-        estimatedHours: '',
+        isOngoing: duplicateData?.status === ProjectStatus.ONGOING,
+        estimatedHours: duplicateData?.estimatedHours?.toString() || '',
         firstPaymentDate: '',
         firstPaymentAmount: '',
         // Client details
@@ -42,8 +46,20 @@ const ProjectForm: React.FC = () => {
         clientCompanyName: '',
         clientEmail: '',
         clientPhone: '',
-        clientBillingEmail: ''
+        clientBillingEmail: '',
+        contractId: location.state?.contractId || duplicateData?.contractId || ''
     });
+
+    useEffect(() => {
+        if (duplicateData) {
+            // Find the client to select them automatically if they exist
+            const client = clients.find(c => c.name.toLowerCase() === duplicateData.clientName.toLowerCase());
+            if (client) {
+                setSelectedClientId(client.id);
+            }
+        }
+    }, [duplicateData, clients]);
+
 
     const [showClientDetails, setShowClientDetails] = useState(false);
 
@@ -120,6 +136,8 @@ const ProjectForm: React.FC = () => {
             client = newClient;
         }
 
+        const contractId = formData.contractId || undefined;
+
         const payments = [];
         if (formData.firstPaymentDate) {
             const paymentAmount = formData.firstPaymentAmount ? parseNumber(formData.firstPaymentAmount) : rateVal;
@@ -154,7 +172,8 @@ const ProjectForm: React.FC = () => {
                 { id: Date.now().toString(), date: new Date().toISOString(), title: 'Projeto Criado', type: 'SYSTEM' }
             ],
             checklist: [],
-            linkedExpenseIds: []
+            linkedExpenseIds: [],
+            contractId: contractId
         });
         navigate('/projects');
     };
@@ -336,6 +355,28 @@ const ProjectForm: React.FC = () => {
                                             />
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {/* Contract Selection */}
+                            {selectedClientId && contracts.filter(c => c.clientId === selectedClientId).length > 0 && (
+                                <div className="space-y-4 pt-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mb-2 block">Vincular a Contrato (Opcional)</label>
+                                    <Select
+                                        value={formData.contractId}
+                                        onChange={e => setFormData({ ...formData, contractId: e.target.value })}
+                                        label=""
+                                    >
+                                        <option value="">Sem contrato (Projeto avulso)</option>
+                                        {contracts
+                                            .filter(c => c.clientId === selectedClientId)
+                                            .map(c => (
+                                                <option key={c.id} value={c.id}>{c.title}</option>
+                                            ))}
+                                    </Select>
+                                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest pl-1">
+                                        Vincular este projeto a um contrato permite consolidar faturamento e retenções.
+                                    </p>
                                 </div>
                             )}
 

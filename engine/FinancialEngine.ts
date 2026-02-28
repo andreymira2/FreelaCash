@@ -1,55 +1,88 @@
-import { Project, Expense, Currency, PaymentStatus, ProjectStatus } from '../types';
-import { 
-  FinancialEngineConfig, 
-  FinancialSnapshot, 
-  ProjectFinancials, 
+import { Project, Expense, Currency, PaymentStatus, ProjectStatus, Client, Contract } from '../types';
+import {
+  FinancialEngineConfig,
+  FinancialSnapshot,
+  ProjectFinancials,
   RecurringExpenseProgress,
   Receivable,
   ExpenseReminder,
   HealthScore,
   ActivityItem,
   GroupedActivity,
+  MonthKey,
+  DashboardModel,
+  ProjectModel,
+  ClientModel,
+  ProjectCardModel,
+  ProjectsListModel,
+  ConfidenceLevel,
   TimelineEvent,
-  MonthKey
+  NextBestAction,
+  DashboardSignals,
+  ClientCardModel,
+  ClientDetailsModel,
+  ProjectMarginModel,
+  MonthlyReportModel,
+  YearToDateModel,
+  ContractModel,
+  ContractCardModel
 } from './types';
 import { safeFloat, convertCurrency, createCurrencyConverter } from './currencyUtils';
-import { 
-  getDateRange, 
-  getCurrentMonth, 
-  getMonthKey, 
-  getDaysDifference, 
+import {
+  getDateRange,
+  getCurrentMonth,
+  getMonthKey,
+  getDaysDifference,
   isDateInRange,
   startOfDay,
   addDays
 } from './dateUtils';
-import { 
-  calculateProjectFinancials, 
-  getProjectReceivables, 
+import {
+  calculateProjectFinancials,
+  getProjectReceivables,
   getRecurringIncome,
-  getProjectIncomeInPeriod
+  getProjectIncomeInPeriod,
+  getProjectsListModel,
+  getClientsListModel,
+  getClientDetailsModel,
+  getRecentActivity
 } from './projectCalculations';
-import { 
-  getRecurringExpenseProgress, 
+import {
+  getRecurringExpenseProgress,
   getExpenseReminders,
   getExpensesPaidInPeriod,
   getOpenExpensesInPeriod,
-  getRecurringExpenseTotal
+  getRecurringExpenseTotal,
+  getProjectMarginModel,
+  getExpensesListModel
 } from './expenseCalculations';
+import {
+  calculateMonthlyReport,
+  calculateYearToDateReport
+} from './reportCalculations';
+import { calculateContractModel, calculateContractCardModel } from './contractCalculations';
 
 export class FinancialEngine {
   private config: FinancialEngineConfig;
   private projects: Project[];
   private expenses: Expense[];
+  private clients: Client[];
+  private contracts: Contract[]; // Added contracts
+
   private convert: ReturnType<typeof createCurrencyConverter>;
 
   constructor(
     projects: Project[],
     expenses: Expense[],
-    config: FinancialEngineConfig
+    clients: Client[],
+    config: FinancialEngineConfig,
+    contracts: Contract[] = []
   ) {
     this.projects = projects;
     this.expenses = expenses;
+    this.clients = clients;
     this.config = config;
+    this.contracts = contracts;
     this.convert = createCurrencyConverter(config);
   }
 
@@ -71,6 +104,18 @@ export class FinancialEngine {
     return this.projects
       .filter(p => p.status === ProjectStatus.ACTIVE || p.status === ProjectStatus.ONGOING)
       .map(p => calculateProjectFinancials(p, this.expenses, this.config));
+  }
+
+  getProjectsListModel(filters?: { status?: string, searchQuery?: string, showOnlyPending?: boolean }): ProjectsListModel {
+    return getProjectsListModel(this.projects, this.config, filters);
+  }
+
+  getClientsListModel(filters?: { searchQuery?: string }): ClientCardModel[] {
+    return getClientsListModel(this.clients, this.projects, this.config, filters);
+  }
+
+  getClientDetailsModel(clientId: string): ClientDetailsModel | null {
+    return getClientDetailsModel(clientId, this.clients, this.projects, this.config);
   }
 
   getReceivables(): Receivable[] {
@@ -98,7 +143,7 @@ export class FinancialEngine {
     const income = getProjectIncomeInPeriod(this.projects, start, end, this.config);
     const expenses = getExpensesPaidInPeriod(this.expenses, start, end, this.config);
     const openExpenses = getOpenExpensesInPeriod(this.expenses, start, end, this.config);
-    
+
     const receivables = this.getReceivables();
     const scheduledIncome = receivables
       .filter(r => isDateInRange(r.date, start, end))
@@ -136,6 +181,40 @@ export class FinancialEngine {
     };
   }
 
+  getExpensesListModel(filters?: { projectId?: string, clientId?: string, searchQuery?: string, status?: string }): Expense[] {
+    return getExpensesListModel(this.expenses, this.config, filters);
+  }
+
+  getProjectMarginModel(projectId: string): ProjectMarginModel | null {
+    const margin = getProjectMarginModel(
+      this.projects, // Changed from this.data.projects to this.projects
+      this.expenses, // Changed from this.data.expenses to this.expenses
+      projectId,
+      this.config
+    );
+
+    if (!margin) return null;
+
+    // Populate revenue from the actual project financials
+    const financials = this.getProjectFinancials(projectId);
+    if (financials) {
+      margin.grossRevenue = financials.grossConverted;
+      margin.margin = safeFloat(margin.grossRevenue - margin.directCosts);
+      margin.marginPercent = margin.grossRevenue > 0 ? (margin.margin / margin.grossRevenue) * 100 : 0;
+    }
+
+    return margin;
+  }
+
+  getMarginAnalysis(): ProjectMarginModel[] {
+    const projectsWithCosts = this.projects // Changed from this.data.projects to this.projects
+      .filter(p => !p.isArchived)
+      .map(p => this.getProjectMarginModel(p.id))
+      .filter((m): m is ProjectMarginModel => m !== null && m.directCosts > 0);
+
+    return projectsWithCosts.sort((a, b) => b.directCosts - a.directCosts);
+  }
+
   getHealthScore(): HealthScore {
     const range = getDateRange('THIS_MONTH');
     const snapshot = this.getFinancialSnapshot(range.start, range.end);
@@ -147,8 +226,8 @@ export class FinancialEngine {
     const overduePenalty = Math.min(15, overdueCount * 5);
 
     const score = Math.round(
-      (goalProgress * 0.5) + 
-      (profitMargin * 0.35) - 
+      (goalProgress * 0.5) +
+      (profitMargin * 0.35) -
       overduePenalty
     );
     const clampedScore = Math.max(0, Math.min(100, score));
@@ -166,6 +245,186 @@ export class FinancialEngine {
         overduePenalty
       },
       status
+    };
+  }
+
+  getNextBestAction(rangeStart: Date, rangeEnd: Date): NextBestAction | null {
+    // Priority 1: Overdue Receivables
+    const receivables = this.getReceivables();
+    const overdue = receivables.find(r => r.isOverdue);
+    if (overdue) {
+      return {
+        title: `Cobrar ${overdue.clientName}`,
+        reason: 'Existem recebimentos em atraso.',
+        route: `/projects/${overdue.projectId}`,
+        priority: 1
+      };
+    }
+
+    // Priority 2: Missing Expense Data (Negligent User check)
+    if (this.expenses.length === 0) {
+      return {
+        title: 'Registrar Despesas',
+        reason: 'O sistema não possui dados de despesas para projeções.',
+        route: '/expenses',
+        priority: 2
+      };
+    }
+
+    // Priority 3: No Active Projects
+    const activeProjects = this.projects.filter(p => p.status === ProjectStatus.ACTIVE || p.status === ProjectStatus.ONGOING);
+    if (activeProjects.length === 0) {
+      return {
+        title: 'Criar Novo Projeto',
+        reason: 'Nenhum projeto ativo para acompanhar de perto.',
+        route: '/projects/new',
+        priority: 3
+      };
+    }
+
+    // Default: Nothing urgent
+    return null;
+  }
+
+  getDashboardSignals(): DashboardSignals {
+    const hasRecurringExpenses = this.expenses.some(e => e.isRecurring);
+    const hasReceivables = this.getReceivables().length > 0;
+
+    // Check if any client has more than 1 project
+    const clientProjectCounts: Record<string, number> = {};
+    this.projects.forEach(p => {
+      clientProjectCounts[p.clientName] = (clientProjectCounts[p.clientName] || 0) + 1;
+    });
+    const hasMultiProjectClient = Object.values(clientProjectCounts).some(count => count > 1);
+
+    const hasLinkedProjectCosts = this.projects.some(p => p.linkedExpenseIds && p.linkedExpenseIds.length > 0);
+    const forecastConfidenceLow = !hasRecurringExpenses; // Expanding on the degradation rule
+
+    return {
+      hasRecurringExpenses,
+      hasReceivables,
+      hasMultiProjectClient,
+      hasLinkedProjectCosts,
+      forecastConfidenceLow
+    };
+  }
+
+  getDashboardModel(rangeStart: Date, rangeEnd: Date): DashboardModel {
+    const nextBestAction = this.getNextBestAction(rangeStart, rangeEnd);
+    const signals = this.getDashboardSignals();
+
+    // Degradation Rule: If recurring expenses are empty, forecast confidence is estimated
+    let confidence: ConfidenceLevel = signals.forecastConfidenceLow ? 'estimated' : 'confirmed';
+
+    const model: DashboardModel = {
+      snapshot: this.getFinancialSnapshot(rangeStart, rangeEnd),
+      healthScore: this.getHealthScore(),
+      recentActivity: this.getRecentActivity(15),
+      confidence,
+      nextBestAction,
+      signals
+    };
+
+    // Conditional module attachments based on Stage 4 Progressive Engine requests
+    if (signals.hasRecurringExpenses) {
+      // Stub for the 30-day forecast, attaching upcoming reminders
+      model.forecast30Days = this.getExpenseReminders(30);
+    }
+
+    if (signals.hasReceivables) {
+      // Attach the existing list of specific receivables
+      model.receivables = this.getReceivables();
+    }
+
+    if (signals.hasMultiProjectClient) {
+      // Find the specific clients causing this flag 
+      // (For this stage we just need one to prove the module works)
+      const topClientEntry = Object.entries(
+        this.projects.reduce((acc, p) => {
+          acc[p.clientName] = (acc[p.clientName] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      ).find(([_, count]) => count > 1);
+
+      if (topClientEntry) {
+        model.clientDependency = [this.getClientModel(topClientEntry[0])];
+      }
+    }
+
+    if (signals.hasLinkedProjectCosts) {
+      model.marginAnalysis = this.getMarginAnalysis();
+    }
+
+    return model;
+  }
+
+  getProjectModel(projectId: string): ProjectModel {
+    const financials = this.getProjectFinancials(projectId);
+
+    // Get all events, filter only for this project
+    const allEvents = this.getCalendarEvents(new Date());
+    // ^ getCalendarEvents requires a month date. We can grab a wide array if needed, 
+    // but the prompt just needs a stub for the timeline. For precision, let's grab the project's own array.
+    const project = this.projects.find(p => p.id === projectId);
+    const timeline: TimelineEvent[] = [];
+
+    if (project) {
+      // Stubbing the timeline just from the project payments for the model
+      project.payments?.forEach(pay => {
+        timeline.push({
+          id: pay.id,
+          date: new Date(pay.date),
+          type: 'income',
+          title: 'Payment',
+          amount: pay.amount,
+          amountConverted: this.convert(pay.amount, project.currency),
+          currency: project.currency,
+          status: pay.status === PaymentStatus.PAID ? 'paid' : 'pending'
+        });
+      });
+    }
+
+    return {
+      financials,
+      timeline: timeline.sort((a, b) => b.date.getTime() - a.date.getTime())
+    };
+  }
+
+  getClientModel(clientId: string): ClientModel {
+    const client = this.clients.find(c => c.id === clientId);
+    if (!client) throw new Error(`Client with ID ${clientId} not found.`);
+
+    const clientProjects = this.projects.filter(p => p.clientId === clientId);
+    const activeProjects = clientProjects.filter(p => p.status === ProjectStatus.ACTIVE || p.status === ProjectStatus.ONGOING);
+
+    let totalGross = 0;
+    let totalPaid = 0;
+    let totalRemaining = 0;
+
+    clientProjects.forEach(p => {
+      const fin = this.getProjectFinancials(p.id);
+      if (fin) {
+        totalGross += fin.grossConverted;
+        totalPaid += fin.paidConverted;
+        totalRemaining += this.convert(fin.remaining, p.currency);
+      }
+    });
+
+    const clientContracts = this.contracts
+      .filter(c => c.clientId === clientId)
+      .map(c => ({
+        ...calculateContractCardModel(c, this.projects),
+        clientName: client.name
+      }));
+
+    return {
+      clientId,
+      totalProjects: clientProjects.length,
+      activeProjects: activeProjects.length,
+      totalGrossConverted: totalGross,
+      totalPaidConverted: totalPaid,
+      totalRemainingConverted: totalRemaining,
+      contracts: clientContracts // Added contracts to ClientModel
     };
   }
 
@@ -218,7 +477,7 @@ export class FinancialEngine {
     });
 
     const sorted = activities.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
-    
+
     const now = new Date();
     const todayStart = startOfDay(now);
     const weekStart = addDays(todayStart, -7);
@@ -345,6 +604,37 @@ export class FinancialEngine {
     return events.sort((a, b) => a.date.getTime() - b.date.getTime());
   }
 
+  getMonthlyReportModel(monthKey: string): MonthlyReportModel {
+    return calculateMonthlyReport(this.projects, this.expenses, monthKey, this.config);
+  }
+
+  getYearToDateModel(year: number): YearToDateModel {
+    return calculateYearToDateReport(this.projects, this.expenses, year, this.config);
+  }
+
+  getContractModel(contractId: string): ContractModel | null {
+    const contract = this.contracts.find(c => c.id === contractId);
+    if (!contract) return null;
+
+    return calculateContractModel(
+      contract,
+      this.projects,
+      this.expenses,
+      this.config
+    );
+  }
+
+  getContractsListModel(): ContractCardModel[] {
+    return this.contracts.map(contract => {
+      const model = calculateContractCardModel(contract, this.projects);
+      const client = this.clients.find(c => c.id === contract.clientId);
+      return {
+        ...model,
+        clientName: client?.name || 'Cliente Desconhecido'
+      };
+    });
+  }
+
   convertToMainCurrency(amount: number, from: Currency): number {
     return this.convert(amount, from);
   }
@@ -353,7 +643,9 @@ export class FinancialEngine {
 export function createFinancialEngine(
   projects: Project[],
   expenses: Expense[],
-  config: FinancialEngineConfig
+  clients: Client[],
+  config: FinancialEngineConfig,
+  contracts: Contract[] = []
 ): FinancialEngine {
-  return new FinancialEngine(projects, expenses, config);
+  return new FinancialEngine(projects, expenses, clients, config, contracts);
 }
