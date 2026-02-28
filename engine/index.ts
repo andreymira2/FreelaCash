@@ -4,3 +4,4 @@ export * from './currencyUtils';
 export * from './projectCalculations';
 export * from './expenseCalculations';
 export * from './FinancialEngine';
+export * from './contractCalculations';

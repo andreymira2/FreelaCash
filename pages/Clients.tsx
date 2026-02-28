@@ -69,7 +69,7 @@ const Clients: React.FC = () => {
                                 <div>
                                     <p className="text-[10px] uppercase tracking-widest text-ink-dim font-black mb-1">Faturamento Total</p>
                                     <p className="text-xl font-black text-white">
-                                        <CurrencyDisplay amount={client.totalRevenue} currency={settings.mainCurrency} />
+                                        <CurrencyDisplay amount={client.totalRevenueConverted} currency={settings.mainCurrency} />
                                     </p>
                                 </div>
                                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-ink-gray group-hover:bg-brand group-hover:text-black transition-all">

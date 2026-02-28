@@ -219,7 +219,7 @@ const ClientDetails: React.FC = () => {
                     </h2>
                     <div className="space-y-3">
                         {receivables.map(r => (
-                            <div key={r.id} className="p-4 rounded-xl bg-semantic-yellow/5 border border-semantic-yellow/10 flex items-center justify-between">
+                            <div key={r.paymentId} className="p-4 rounded-xl bg-semantic-yellow/5 border border-semantic-yellow/10 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-semantic-yellow/10 flex items-center justify-center text-semantic-yellow">
                                         <Calendar size={18} />

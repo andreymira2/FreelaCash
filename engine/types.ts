@@ -276,19 +276,6 @@ export interface ProjectMarginModel {
   marginPercent: number;
 }
 
-export interface DashboardModel {
-  snapshot: FinancialSnapshot;
-  healthScore: HealthScore;
-  recentActivity: GroupedActivity[];
-  confidence: ConfidenceLevel;
-  nextBestAction: NextBestAction | null;
-  signals: DashboardSignals;
-  forecast30Days?: any;
-  receivables?: Receivable[];
-  clientDependency?: ClientModel[];
-  marginAnalysis?: ProjectMarginModel[];
-}
-
 export interface MonthlyReportModel {
   monthKey: string;
   income: number;
